@@ -11,6 +11,7 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({ nome: '', sobrenome: '', celular: '', profile_picture_url: '' });
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -180,6 +181,26 @@ export default function ProfileScreen() {
       </TouchableOpacity>
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Logout</Text>
+      </TouchableOpacity>
+      {/* Botão para navegação à tela de recuperação de senha */}
+      <TouchableOpacity
+        style={[styles.logoutButton, { backgroundColor: '#FF7A00', marginTop: 10 }]}
+        disabled={recovering}
+        onPress={async () => {
+          setRecovering(true);
+          try {
+            // @ts-ignore
+            const navigation = require('expo-router').useRouter();
+            navigation.push('/password-recovery');
+            // Sinal visual: aguarda 1s para mostrar que algo aconteceu
+            setTimeout(() => setRecovering(false), 1000);
+          } catch (e) {
+            setRecovering(false);
+            Alert.alert('Navegação', 'Acesse a tela de recuperação de senha pelo menu principal.');
+          }
+        }}
+      >
+        <Text style={styles.logoutButtonText}>{recovering ? 'Abrindo...' : 'Recuperar Senha'}</Text>
       </TouchableOpacity>
     </View>
   );
