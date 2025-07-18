@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, Alert } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import 'react-native-url-polyfill/auto';
 
@@ -10,22 +10,53 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState({ nome: '', sobrenome: '', celular: '', avatar_url: '' });
+  const [form, setForm] = useState({ nome: '', sobrenome: '', celular: '', profile_picture_url: '' });
 
   useEffect(() => {
     const fetchUser = async () => {
       const {
         data: { user },
+        error: authError
       } = await supabase.auth.getUser();
+      if (authError) {
+        Alert.alert('Erro ao buscar usuário', authError.message || JSON.stringify(authError));
+        return;
+      }
       if (user) {
-        // Busca dados extras na tabela users
-        const { data } = await supabase.from('users').select('*').eq('id', user.id).single();
-        setUser({ ...user, ...data });
+        // Busca dados extras na tabela users_
+        const { data, error: selectError } = await supabase.from('users_').select('*').eq('id', user.id).single();
+        let userData = data;
+        if (selectError) {
+          Alert.alert('Erro ao buscar perfil', selectError.message || JSON.stringify(selectError));
+        }
+        // Se não existe, cria registro
+        if (!userData) {
+          // Campos obrigatórios do schema
+          const insertPayload: any = {
+            id: user.id,
+            email: user.email,
+            nome: '',
+            sobrenome: '',
+            celular: '',
+            profile_picture_url: '',
+            full_name: user.user_metadata?.full_name || user.email || '',
+            password_hash: '',
+            user_role: 'customer',
+            is_verified: false
+          };
+          const { data: insertData, error: insertError } = await supabase.from('users_').insert(insertPayload).select().single();
+          if (insertError) {
+            Alert.alert('Erro ao criar perfil', insertError.message || JSON.stringify(insertError));
+            return;
+          }
+          userData = insertData;
+        }
+        setUser({ ...user, ...userData });
         setForm({
-          nome: data?.nome || '',
-          sobrenome: data?.sobrenome || '',
-          celular: data?.celular || '',
-          avatar_url: data?.avatar_url || '',
+          nome: userData?.nome || '',
+          sobrenome: userData?.sobrenome || '',
+          celular: userData?.celular || '',
+          profile_picture_url: userData?.profile_picture_url || '',
         });
       }
     };
@@ -39,23 +70,64 @@ export default function ProfileScreen() {
   };
 
   const handleSave = async () => {
-    if (!user?.id) return;
-    await supabase.from('users').update({
+    if (!user?.id) {
+      Alert.alert('Erro', 'Usuário não encontrado.');
+      return;
+    }
+    // Monta objeto apenas com campos definidos
+    const updateData: any = {
+      id: user.id,
+      email: user.email,
       nome: form.nome,
       sobrenome: form.sobrenome,
       celular: form.celular,
-      avatar_url: form.avatar_url,
-    }).eq('id', user.id);
-    setUser({ ...user, ...form });
-    setEditMode(false);
+      profile_picture_url: form.profile_picture_url,
+      full_name: user.user_metadata?.full_name || user.email || '',
+      password_hash: '',
+      user_role: 'customer',
+      is_verified: false
+    };
+    const { error, status, data } = await supabase.from('users_').update(updateData).eq('id', user.id);
+    if (error) {
+      Alert.alert('Erro ao atualizar perfil', error.message || JSON.stringify(error));
+    } else if (status !== 204 && !data) {
+      Alert.alert('Erro', 'Perfil não foi atualizado. Nenhum dado retornado.');
+    } else {
+      setUser({ ...user, ...form });
+      setEditMode(false);
+      Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    Alert.alert('Logout', 'Você saiu da conta.');
+    setUser(null);
+    // Redireciona para login (expo-router)
+    // Se estiver usando expo-router:
+    try {
+      // @ts-ignore
+      if (typeof window === 'undefined') {
+        // mobile: use navigation
+        // @ts-ignore
+        const navigation = require('expo-router').useRouter();
+        navigation.replace('/login');
+      } else {
+        // web: reload
+        window.location.href = '/login';
+      }
+    } catch (e) {
+      // fallback: reload
+      if (typeof window !== 'undefined') window.location.reload();
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Perfil do Usuário</Text>
       <View style={styles.avatarContainer}>
-        {form.avatar_url ? (
-          <Image source={{ uri: form.avatar_url }} style={styles.avatar} />
+        {form.profile_picture_url ? (
+          <Image source={{ uri: form.profile_picture_url }} style={styles.avatar} />
         ) : (
           <View style={styles.initialsAvatar}>
             <Text style={styles.initialsText}>
@@ -88,8 +160,8 @@ export default function ProfileScreen() {
           <TextInput
             style={styles.input}
             placeholder="URL do Avatar"
-            value={form.avatar_url}
-            onChangeText={v => setForm(f => ({ ...f, avatar_url: v }))}
+            value={form.profile_picture_url}
+            onChangeText={v => setForm(f => ({ ...f, profile_picture_url: v }))}
           />
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Salvar</Text>
@@ -105,6 +177,9 @@ export default function ProfileScreen() {
       )}
       <TouchableOpacity style={styles.editButton} onPress={() => setEditMode(!editMode)}>
         <Text style={styles.editButtonText}>{editMode ? 'Cancelar' : 'Editar Perfil'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
@@ -180,6 +255,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   saveButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  logoutButton: {
+    marginTop: 10,
+    backgroundColor: '#E53935',
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+  },
+  logoutButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,

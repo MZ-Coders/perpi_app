@@ -32,6 +32,21 @@ export default function LoginScreen() {
     }
   };
 
+  const handleOAuthLogin = async (provider: 'google' | 'facebook') => {
+    setError('');
+    setLoading(true);
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: 'exp://localhost:19000', // ajuste para seu ambiente
+      },
+    });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } // O fluxo OAuth redireciona automaticamente
+  };
+
   return (
     <View style={[styles.container, colorScheme === 'dark' ? styles.dark : styles.light]}>
       <Text style={styles.title}>Entrar</Text>
@@ -53,6 +68,12 @@ export default function LoginScreen() {
       {error ? <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text> : null}
       <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.oauthButton} onPress={() => handleOAuthLogin('google')}>
+        <Text style={styles.oauthButtonText}>Entrar com Google</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.oauthButton} onPress={() => handleOAuthLogin('facebook')}>
+        <Text style={styles.oauthButtonText}>Entrar com Facebook</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('/register')}>
         <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
@@ -99,6 +120,18 @@ const styles = StyleSheet.create({
   link: {
     color: '#008A44',
     marginTop: 8,
+  },
+  oauthButton: {
+    backgroundColor: '#E0E0E0',
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  oauthButtonText: {
+    color: '#1A1A1A',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   dark: {
     backgroundColor: '#121212',
