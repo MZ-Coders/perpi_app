@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, StyleSheet } from 'react-native';
-import { useColorScheme } from 'react-native';
+import { StyleSheet, Switch, Text, useColorScheme, View } from 'react-native';
 
 export default function ThemeSettings() {
   const systemScheme = useColorScheme();

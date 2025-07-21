@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { useColorScheme } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
+import React, { useState } from 'react';
+import { Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
 
 const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';

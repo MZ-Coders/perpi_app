@@ -1,6 +1,6 @@
-import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import React from 'react';
 import LoginScreen from './auth/login';
 import RegisterScreen from './auth/register';
 import UserProfileScreen from './user/UserProfile';
