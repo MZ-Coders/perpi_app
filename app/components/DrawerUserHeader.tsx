@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 
 const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export default function DrawerUserHeader() {
+export default function DrawerUserHeader({ trigger }: { trigger?: any }) {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -15,19 +16,27 @@ export default function DrawerUserHeader() {
       if (user) {
         const { data } = await supabase.from('users_').select('nome, sobrenome, profile_picture_url, email').eq('id', user.id).single();
         setUser({ ...user, ...data });
+      } else {
+        setUser(null);
       }
     }
     fetchUser();
-  }, []);
+  }, [trigger]);
 
-  if (!user) return null;
-  const name = user.nome || user.sobrenome ? `${user.nome || ''} ${user.sobrenome || ''}`.trim() : (user.user_metadata?.full_name || user.email || 'Usuário');
-  const avatar = user.profile_picture_url;
-  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  let name = 'Guest';
+  let avatar = null;
+  let initials = '';
+  if (user) {
+    name = user.nome || user.sobrenome ? `${user.nome || ''} ${user.sobrenome || ''}`.trim() : (user.user_metadata?.full_name || user.email || 'Usuário');
+    avatar = user.profile_picture_url;
+    initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  }
 
   return (
     <View style={styles.header}>
-      {avatar ? (
+      {!user ? (
+        <Icon name="user" size={64} color="#888" style={styles.avatar} />
+      ) : avatar ? (
         <Image source={{ uri: avatar }} style={styles.avatar} />
       ) : (
         <View style={[styles.avatar, styles.avatarFallback]}><Text style={styles.initials}>{initials}</Text></View>

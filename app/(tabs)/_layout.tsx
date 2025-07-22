@@ -18,9 +18,11 @@ export default function TabLayout() {
   const router = useRouter();
   // Só renderiza após checar o estado do usuário (undefined = carregando)
   const [checked, setChecked] = React.useState(false);
+  const [headerRefresh, setHeaderRefresh] = React.useState(0);
   React.useEffect(() => {
     setChecked(true);
   }, [user]);
+  React.useEffect(() => { setHeaderRefresh(r => r + 1); }, [user]);
   if (!checked) return null;
   return (
     <Drawer
@@ -42,7 +44,7 @@ export default function TabLayout() {
         ];
         return (
           <DrawerContentScrollView {...props}>
-            <DrawerUserHeader />
+            <DrawerUserHeader trigger={headerRefresh} />
             {!user && (
               <>
                 <TouchableOpacity
@@ -64,6 +66,22 @@ export default function TabLayout() {
                       Faça login para aproveitar todos os recursos do app!
                     </span>
                   </>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('login')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 20,
+                    backgroundColor: '#008A44',
+                    borderRadius: 8,
+                    marginBottom: 8,
+                  }}
+                  accessibilityLabel="Fazer login ou registrar"
+                >
+                  <Icon name="log-in" size={22} color="#fff" style={{ marginRight: 16 }} />
+                  {React.createElement(require('react-native').Text, { style: { color: '#fff', fontWeight: 'bold', fontSize: 16 } }, 'Entrar ou Registrar')}
                 </TouchableOpacity>
               </>
             )}
