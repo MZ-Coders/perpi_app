@@ -1,10 +1,10 @@
+import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, Platform } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
-import { useLocalSearchParams } from 'expo-router';
 
 // Espera receber os dados do produto via params
 export default function ProductDetailScreen() {
@@ -25,13 +25,6 @@ export default function ProductDetailScreen() {
       {/* Adicione aqui mais detalhes do produto, descrição, avaliações, etc. */}
     </ScrollView>
   );
-// For react-navigation-shared-element or Expo Router v2+ stack, export sharedElements config
-// This is required for the animation to work
-// @ts-ignore
-ProductDetailScreen.sharedElements = (route) => {
-  const { sharedId } = route?.params || {};
-  return sharedId ? [sharedId] : [];
-};
 }
 
 const styles = StyleSheet.create({

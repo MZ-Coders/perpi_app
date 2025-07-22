@@ -1,8 +1,8 @@
 
-import { Drawer } from 'expo-router/drawer';
-import React from 'react';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { Drawer } from 'expo-router/drawer';
+import React from 'react';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -27,6 +27,13 @@ export default function TabLayout() {
         options={{
           title: 'Explore',
           drawerLabel: 'Explorar',
+        }}
+      />
+      <Drawer.Screen
+        name="profile"
+        options={{
+          title: 'Perfil',
+          drawerLabel: 'Perfil',
         }}
       />
     </Drawer>

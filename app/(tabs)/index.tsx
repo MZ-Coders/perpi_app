@@ -1,12 +1,12 @@
+import { createClient } from '@supabase/supabase-js';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Modal } from 'react-native';
-import { View, Text, FlatList, Image, TouchableOpacity, TextInput, StyleSheet, Platform } from 'react-native';
+import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import CategoryFilter from '../components/CategoryFilter';
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
-import { useRouter } from 'expo-router';
-import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
@@ -15,6 +15,8 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export default function ProductCatalogScreen() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filtered, setFiltered] = useState<any[]>([]);
   const [viewType, setViewType] = useState<'grid' | 'list'>('list');
@@ -24,22 +26,30 @@ export default function ProductCatalogScreen() {
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   useEffect(() => {
-    if (search.length > 0) {
-      setFiltered(products.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase())));
-    } else {
-      setFiltered(products);
+    let filteredProducts = products;
+    if (selectedCategory) {
+      filteredProducts = filteredProducts.filter((p: any) => p.category_id === selectedCategory);
     }
-  }, [search, products]);
+    if (search.length > 0) {
+      filteredProducts = filteredProducts.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase()));
+    }
+    setFiltered(filteredProducts);
+  }, [search, products, selectedCategory]);
 
   async function fetchProducts() {
     setLoading(true);
-    const { data, error } = await supabase.from('products').select('id, name, price, image_url');
-    console.log('Produtos:', data, 'Erro:', error);
+    const { data, error } = await supabase.from('products').select('id, name, price, image_url, category_id');
     setLoading(false);
     if (!error && data) setProducts(data);
+  }
+
+  async function fetchCategories() {
+    const { data, error } = await supabase.from('categories').select('id, name, img_url');
+    if (!error && data) setCategories(data);
   }
 
   function handleAddToCart(product: any) {
@@ -133,6 +143,16 @@ export default function ProductCatalogScreen() {
           placeholderTextColor="#5C5C5C"
         />
       </View>
+
+      {/* Filtro de categorias - componente separado, destacado */}
+      <View style={{ backgroundColor: '#F3F3F3', paddingVertical: 10, marginBottom: 8, borderRadius: 12 }}>
+        <CategoryFilter
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelect={setSelectedCategory}
+        />
+      </View>
+
       <View style={styles.toggleRow}>
         <TouchableOpacity
           style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
@@ -261,4 +281,5 @@ const styles = StyleSheet.create({
   closeCartBtn: { marginTop: 18, backgroundColor: '#008A44', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   closeCartBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   emptyText: { textAlign: 'center', marginVertical: 24, color: '#5C5C5C', fontSize: 16 },
+  // ...estilos de categoria agora estão em components/CategoryFilter.tsx
 });

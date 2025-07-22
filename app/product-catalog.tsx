@@ -1,12 +1,11 @@
+import { createClient } from '@supabase/supabase-js';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Modal } from 'react-native';
-import { View, Text, FlatList, Image, TouchableOpacity, TextInput, StyleSheet, Platform } from 'react-native';
+import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
-import { useRouter } from 'expo-router';
-import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
