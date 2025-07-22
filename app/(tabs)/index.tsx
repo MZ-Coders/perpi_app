@@ -3,10 +3,14 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CategoryFilter from '../components/CategoryFilter';
+
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
+
+// Favoritos
+type Favorite = { id: number; product_id: number };
 
 const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
@@ -23,11 +27,48 @@ export default function ProductCatalogScreen() {
   const [loading, setLoading] = useState(false);
   const [cart, setCart] = useState<any[]>([]);
   const [cartVisible, setCartVisible] = useState(false);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    fetchUserAndFavorites();
   }, []);
+
+  async function fetchUserAndFavorites() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setUserId(user.id);
+      fetchFavorites(user.id);
+    }
+  }
+
+  async function fetchFavorites(uid: string) {
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('id, product_id')
+      .eq('user_id', uid);
+    if (!error && data) setFavorites(data);
+  }
+
+  async function handleToggleFavorite(productId: number) {
+    if (!userId) return;
+    const isFav = favorites.some(f => f.product_id === productId);
+    if (isFav) {
+      // Remove
+      const fav = favorites.find(f => f.product_id === productId);
+      if (fav) {
+        await supabase.from('favorites').delete().eq('id', fav.id);
+        setFavorites(favorites.filter(f => f.product_id !== productId));
+      }
+    } else {
+      // Add
+      const { data, error } = await supabase.from('favorites').insert({ product_id: productId, user_id: userId }).select().single();
+      if (!error && data) setFavorites([...favorites, data]);
+    }
+  }
 
   useEffect(() => {
     let filteredProducts = products;
@@ -85,6 +126,7 @@ export default function ProductCatalogScreen() {
     const inCart = cart.some((p) => p.id === item.id);
     const cartItem = cart.find((p) => p.id === item.id);
     const sharedId = `product-image-${item.id}`;
+    const isFav = favorites.some(f => f.product_id === item.id);
     return (
       <TouchableOpacity
         style={viewType === 'grid' ? styles.card : styles.listItem}
@@ -99,7 +141,12 @@ export default function ProductCatalogScreen() {
           </SharedElement>
         )}
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{item.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.name}>{item.name}</Text>
+            <TouchableOpacity onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}>
+              <Text style={{ fontSize: 22 }}>{isFav ? '❤️' : '🤍'}</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.price}>MZN {item.price}</Text>
           <TouchableOpacity
             style={[styles.cartBtn, inCart && styles.cartBtnInCart]}

@@ -30,6 +30,13 @@ export default function TabLayout() {
         }}
       />
       <Drawer.Screen
+        name="favorites"
+        options={{
+          title: 'Favoritos',
+          drawerLabel: 'Favoritos',
+        }}
+      />
+      <Drawer.Screen
         name="profile"
         options={{
           title: 'Perfil',
