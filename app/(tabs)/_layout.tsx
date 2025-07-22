@@ -43,6 +43,30 @@ export default function TabLayout() {
         return (
           <DrawerContentScrollView {...props}>
             <DrawerUserHeader />
+            {!user && (
+              <>
+                <TouchableOpacity
+                  disabled
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 20,
+                    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+                    borderRadius: 8,
+                    marginBottom: 8,
+                  }}
+                  accessibilityLabel="Aviso de login"
+                >
+                  <Icon name="alert-circle" size={22} color="#FFA500" style={{ marginRight: 16 }} />
+                  <>
+                    <span style={{ color: '#FFA500', fontWeight: 'bold' }}>
+                      Faça login para aproveitar todos os recursos do app!
+                    </span>
+                  </>
+                </TouchableOpacity>
+              </>
+            )}
             {screens.map(screen => (
               <TouchableOpacity
                 key={screen.key}
