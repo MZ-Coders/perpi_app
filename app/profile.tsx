@@ -1,11 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, StatusBar } from 'react-native';
+import { Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
+import { supabase } from '../lib/supabaseClient';
 
-const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);

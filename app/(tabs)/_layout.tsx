@@ -7,7 +7,7 @@ import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import DrawerUserHeader from '../components/DrawerUserHeader';
@@ -46,44 +46,22 @@ export default function TabLayout() {
           <DrawerContentScrollView {...props}>
             <DrawerUserHeader trigger={headerRefresh} />
             {!user && (
-              <>
-                <TouchableOpacity
-                  disabled
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 12,
-                    paddingHorizontal: 20,
-                    backgroundColor: 'rgba(255, 215, 0, 0.08)',
-                    borderRadius: 8,
-                    marginBottom: 8,
-                  }}
-                  accessibilityLabel="Aviso de login"
-                >
-                  <Icon name="alert-circle" size={22} color="#FFA500" style={{ marginRight: 16 }} />
-                  <>
-                    <span style={{ color: '#FFA500', fontWeight: 'bold' }}>
-                      Faça login para aproveitar todos os recursos do app!
-                    </span>
-                  </>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('login')}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 12,
-                    paddingHorizontal: 20,
-                    backgroundColor: '#008A44',
-                    borderRadius: 8,
-                    marginBottom: 8,
-                  }}
-                  accessibilityLabel="Fazer login ou registrar"
-                >
-                  <Icon name="log-in" size={22} color="#fff" style={{ marginRight: 16 }} />
-                  {React.createElement(require('react-native').Text, { style: { color: '#fff', fontWeight: 'bold', fontSize: 16 } }, 'Entrar ou Registrar')}
-                </TouchableOpacity>
-              </>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('login')}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  backgroundColor: '#008A44',
+                  borderRadius: 8,
+                  marginBottom: 8,
+                }}
+                accessibilityLabel="Fazer login ou registrar"
+              >
+                <Icon name="log-in" size={22} color="#fff" style={{ marginRight: 16 }} />
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Entrar ou Registrar</Text>
+              </TouchableOpacity>
             )}
             {screens.map(screen => (
               <TouchableOpacity
@@ -101,7 +79,7 @@ export default function TabLayout() {
                 accessibilityLabel={screen.label}
               >
                 <Icon name={screen.icon} size={22} color={state.routeNames[state.index] === screen.key ? '#008A44' : '#888'} style={{ marginRight: 16 }} />
-                <>{screen.label}</>
+                <Text style={{ color: '#222', fontWeight: 'bold', fontSize: 16 }}>{screen.label}</Text>
               </TouchableOpacity>
             ))}
           </DrawerContentScrollView>
@@ -113,27 +91,29 @@ export default function TabLayout() {
         options={{
           title: 'Catálogo',
           drawerLabel: 'Catálogo',
+          headerStyle: { backgroundColor: '#008A44', elevation: 0, shadowOpacity: 0, borderBottomWidth: 0 },
+          headerTintColor: '#fff',
+          headerTitleStyle: { color: '#fff', fontWeight: 'bold' },
           headerRight: ({ tintColor }) =>
             user ? (
               <>
                 <TouchableOpacity
                   onPress={() => {
-                    // Dispara um evento customizado para abrir o modal do carrinho na tela de catálogo
                     if (typeof window !== 'undefined' && window.dispatchEvent) {
                       window.dispatchEvent(new CustomEvent('abrirCarrinho'));
                     }
                   }}
-                  style={{ marginRight: 8, padding: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)' }}
+                  style={{ marginRight: 8, padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)' }}
                   accessibilityLabel="Abrir carrinho"
                 >
-                  <Icon name="shopping-cart" size={24} color={tintColor || '#008A44'} />
+                  <Icon name="shopping-cart" size={24} color={'#fff'} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => router.push('/(tabs)/profile')}
-                  style={{ marginRight: 16, padding: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)' }}
+                  style={{ marginRight: 16, padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)' }}
                   accessibilityLabel="Ir para o perfil"
                 >
-                  <Icon name="user" size={24} color={tintColor || '#008A44'} />
+                  <Icon name="user" size={24} color={'#fff'} />
                 </TouchableOpacity>
               </>
             ) : null,

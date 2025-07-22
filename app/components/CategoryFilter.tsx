@@ -46,20 +46,15 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
           activeOpacity={0.7}
         >
           <View style={[
-            styles.categoryCircle,
-            selectedCategory === null && styles.categoryCircleActive
+            styles.categoryIcon,
+            selectedCategory === null && styles.categoryIconActive
           ]}>
-            <View style={[
-              styles.categoryIcon,
-              selectedCategory === null && styles.categoryIconActive
+            <Text style={[
+              styles.allCategoriesText,
+              selectedCategory === null && styles.allCategoriesTextActive
             ]}>
-              <Text style={[
-                styles.allCategoriesText,
-                selectedCategory === null && styles.allCategoriesTextActive
-              ]}>
-                TODOS
-              </Text>
-            </View>
+              TODOS
+            </Text>
           </View>
           <Text style={[
             styles.categoryName,
@@ -84,40 +79,27 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
               onPress={() => onSelect(isSelected ? null : category.id)}
               activeOpacity={0.7}
             >
-              <View style={[
-                styles.categoryCircle,
-                isSelected && styles.categoryCircleActive
-              ]}>
-                {category.img_url ? (
-                  <Image 
-                    source={{ uri: category.img_url }} 
-                    style={[
-                      styles.categoryImage,
-                      isSelected && styles.categoryImageActive
-                    ]} 
-                  />
-                ) : (
-                  <View style={[
-                    styles.categoryIcon,
-                    isSelected && styles.categoryIconActive
+              {category.img_url ? (
+                <Image 
+                  source={{ uri: category.img_url }} 
+                  style={[
+                    styles.categoryImage,
+                    isSelected && styles.categoryImageActive
+                  ]} 
+                />
+              ) : (
+                <View style={[
+                  styles.categoryIcon,
+                  isSelected && styles.categoryIconActive
+                ]}>
+                  <Text style={[
+                    styles.initialsText,
+                    isSelected && styles.initialsTextActive
                   ]}>
-                    <Text style={[
-                      styles.initialsText,
-                      isSelected && styles.initialsTextActive
-                    ]}>
-                      {initials}
-                    </Text>
-                  </View>
-                )}
-                
-                {/* Indicador de seleção */}
-                {isSelected && (
-                  <View style={styles.selectionIndicator}>
-                    <View style={styles.checkIcon} />
-                  </View>
-                )}
-              </View>
-              
+                    {initials}
+                  </Text>
+                </View>
+              )}
               <Text style={[
                 styles.categoryName,
                 isSelected && styles.categoryNameActive
@@ -177,26 +159,26 @@ const styles = StyleSheet.create({
   categoryItemActive: {
     transform: [{ scale: 1.05 }],
   },
-  categoryCircle: {
-    position: 'relative',
-    marginBottom: 8,
-    borderRadius: 40,
-    padding: 4,
-    backgroundColor: 'transparent',
-  },
-  categoryCircleActive: {
-    backgroundColor: 'rgba(255, 122, 0, 0.1)',
-    borderWidth: 2,
-    borderColor: '#FF7A00',
-    shadowColor: '#FF7A00',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+//   categoryCircle: {
+//     position: 'relative',
+//     marginBottom: 8,
+//     borderRadius: 40,
+//     padding: 4,
+//     backgroundColor: 'transparent',
+//   },
+//   categoryCircleActive: {
+//     backgroundColor: 'rgba(255, 122, 0, 0.1)',
+//     borderWidth: 2,
+//     borderColor: '#FF7A00',
+//     shadowColor: '#FF7A00',
+//     shadowOffset: {
+//       width: 0,
+//       height: 2,
+//     },
+//     shadowOpacity: 0.2,
+//     shadowRadius: 4,
+//     elevation: 3,
+//   },
   categoryImage: {
     width: 64,
     height: 64,
@@ -252,31 +234,31 @@ const styles = StyleSheet.create({
     color: '#FF7A00',
     fontWeight: '700',
   },
-  selectionIndicator: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#FF7A00',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  checkIcon: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
+//   selectionIndicator: {
+//     position: 'absolute',
+//     top: -2,
+//     right: -2,
+//     width: 20,
+//     height: 20,
+//     borderRadius: 10,
+//     backgroundColor: '#FF7A00',
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     borderWidth: 2,
+//     borderColor: '#FFFFFF',
+//     shadowColor: '#000',
+//     shadowOffset: {
+//       width: 0,
+//       height: 1,
+//     },
+//     shadowOpacity: 0.2,
+//     shadowRadius: 2,
+//     elevation: 2,
+//   },
+//   checkIcon: {
+//     width: 8,
+//     height: 8,
+//     borderRadius: 4,
+//     backgroundColor: '#FFFFFF',
+//   },
 });

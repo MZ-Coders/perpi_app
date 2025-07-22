@@ -1,11 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-
-const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '../../lib/supabaseClient';
 
 export default function DrawerUserHeader({ trigger }: { trigger?: any }) {
   const [user, setUser] = useState<any>(null);

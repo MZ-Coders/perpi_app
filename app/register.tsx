@@ -1,13 +1,10 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
+import { supabase } from '../lib/supabaseClient';
 
-const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');

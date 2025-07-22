@@ -1,126 +1,162 @@
-import { createClient } from '@supabase/supabase-js';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    FlatList,
+    Image,
+    Platform,
+    RefreshControl,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
+import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useAuthUser } from '../hooks/useAuthUser';
+import { supabase } from '../lib/supabaseClient';
+import CategoryFilter from './components/CategoryFilter';
+
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
 
-const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+type Product = {
+  id: number;
+  name: string;
+  price: number;
+  image_url?: string;
+  category_id?: number | string | null;
+};
+
+type Favorite = { id: number; product_id: number };
 
 export default function ProductCatalogScreen() {
   const router = useRouter();
-  const [products, setProducts] = useState<any[]>([]);
+  const user = useAuthUser();
+
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
-  const [filtered, setFiltered] = useState<any[]>([]);
   const [viewType, setViewType] = useState<'grid' | 'list'>('list');
   const [loading, setLoading] = useState(false);
+
   const [cart, setCart] = useState<any[]>([]);
   const [cartVisible, setCartVisible] = useState(false);
 
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+
+  /** Fetch products & categories */
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
-  useEffect(() => {
-    if (search.length > 0) {
-      setFiltered(products.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase())));
-    } else {
-      setFiltered(products);
-    }
-  }, [search, products]);
-
-  async function fetchProducts() {
+  const fetchProducts = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('products').select('id, name, price, image_url');
-    console.log('Produtos:', data, 'Erro:', error);
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name, price, image_url, category_id');
     setLoading(false);
-    if (!error && data) setProducts(data);
-  }
+    if (!error && data) {
+      const norm = data.map((p: any) => ({
+        ...p,
+        category_id: p.category_id ? Number(p.category_id) : null,
+      }));
+      setProducts(norm);
+    }
+  };
 
-  function handleAddToCart(product: any) {
-    setCart(prev => {
+  const fetchCategories = async () => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('id, name, img_url');
+    if (!error && data) {
+      setCategories(data.map((c: any) => ({ ...c, id: Number(c.id) })));
+    }
+  };
+
+  const fetchFavorites = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('id, product_id')
+      .eq('user_id', user.id);
+    if (!error && data) {
+      setFavorites(data.map((f: any) => ({ ...f, product_id: Number(f.product_id) })));
+    }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchFavorites();
+    }, [fetchFavorites])
+  );
+
+  /** Filtered products */
+  const filtered = useMemo(() => {
+    let list = products;
+    if (selectedCategory != null) {
+      list = list.filter((p) => Number(p.category_id) === selectedCategory);
+    }
+    if (search.trim().length > 0) {
+      const s = search.trim().toLowerCase();
+      list = list.filter((p) => p.name?.toLowerCase().includes(s));
+    }
+    return list;
+  }, [products, search, selectedCategory]);
+
+  /** Favorites toggle */
+  const isFavorite = (productId: number) =>
+    favorites.some((f) => f.product_id === productId);
+
+  const handleToggleFavorite = async (productId: number) => {
+    if (!user) return;
+    const existing = favorites.find((f) => f.product_id === productId);
+    if (existing) {
+      await supabase.from('favorites').delete().eq('id', existing.id);
+    } else {
+      await supabase.from('favorites').insert({
+        product_id: productId,
+        user_id: user.id,
+      });
+    }
+    fetchFavorites();
+  };
+
+  /** Cart */
+  const handleAddToCart = (product: Product) => {
+    setCart((prev) => {
       const idx = prev.findIndex((p) => p.id === product.id);
-      if (idx !== -1) {
-        const updated = [...prev];
-        updated[idx].qty += 1;
-        return updated;
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx].qty += 1;
+        return copy;
       }
       return [...prev, { ...product, qty: 1 }];
     });
-  }
+  };
 
-  function handleRemoveFromCart(productId: any) {
-    setCart(prev => prev.filter((p) => p.id !== productId));
-  }
-
-  function handleChangeQty(productId: any, delta: number) {
-    setCart(prev => {
-      return prev.map((p) => {
-        if (p.id === productId) {
-          const newQty = p.qty + delta;
-          if (newQty <= 0) return null;
-          return { ...p, qty: newQty };
-        }
-        return p;
-      }).filter(Boolean);
-    });
-  }
-
-  function renderProduct({ item }: { item: any }) {
-    const inCart = cart.some((p) => p.id === item.id);
-    const cartItem = cart.find((p) => p.id === item.id);
-    const sharedId = `product-image-${item.id}`;
-    return (
-      <TouchableOpacity
-        style={viewType === 'grid' ? styles.card : styles.listItem}
-        activeOpacity={0.85}
-        onPress={() => router.push({ pathname: '/product-detail', params: { ...item, sharedId } })}
-      >
-        {Platform.OS === 'web' || !SharedElement ? (
-          <Image source={{ uri: item.image_url }} style={styles.image} />
-        ) : (
-          <SharedElement id={sharedId} style={styles.image} onNode={() => {}}>
-            <Image source={{ uri: item.image_url }} style={styles.image} />
-          </SharedElement>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.price}>MZN {item.price}</Text>
-          <TouchableOpacity
-            style={[styles.cartBtn, inCart && styles.cartBtnInCart]}
-            onPress={e => {
-              e.stopPropagation();
-              handleAddToCart(item);
-            }}
-          >
-            <Text style={styles.cartBtnText}>
-              {inCart ? `No carrinho${cartItem && cartItem.qty > 1 ? ` (${cartItem.qty})` : ''}` : 'Adicionar ao carrinho'}
-            </Text>
-            {inCart && <Text style={styles.inCartIcon}>✔️</Text>}
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
-  // Calcula o total do carrinho
-  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-
-  return (
-    <View style={styles.container}>
-      {/* Topo com ícone do carrinho */}
+  /** Header (tudo que estava fixo antes) */
+  const renderHeader = () => (
+    <View style={styles.headerWrap}>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => setCartVisible(true)} style={styles.cartIconBtn}>
+        <TouchableOpacity
+          onPress={() => setCartVisible(true)}
+          style={styles.cartIconBtn}
+        >
           <Text style={styles.cartIcon}>🛒</Text>
           {cart.length > 0 && (
-            <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cart.length}</Text></View>
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cart.length}</Text>
+            </View>
           )}
         </TouchableOpacity>
-        <Text style={styles.title}>Catálogo de Produtos</Text>
+        <Text style={styles.title}>Perpi Shop</Text>
       </View>
 
       <View style={styles.searchRow}>
@@ -132,6 +168,17 @@ export default function ProductCatalogScreen() {
           placeholderTextColor="#5C5C5C"
         />
       </View>
+
+      <View style={styles.categoryContainer}>
+        <CategoryFilter
+          categories={categories}
+          selectedCategory={selectedCategory != null ? String(selectedCategory) : null}
+          onSelect={(val: string | null) =>
+            setSelectedCategory(val == null ? null : Number(val))
+          }
+        />
+      </View>
+
       <View style={styles.toggleRow}>
         <TouchableOpacity
           style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
@@ -146,118 +193,204 @@ export default function ProductCatalogScreen() {
           <Text style={[styles.toggleIcon, viewType === 'grid' && styles.toggleIconActive]}>🔲</Text>
         </TouchableOpacity>
       </View>
+    </View>
+  );
+
+  /** Render product item */
+  const renderItem = ({ item, index }: { item: Product; index: number }) => {
+    const inCart = cart.some((p) => p.id === item.id);
+    const fav = isFavorite(item.id);
+
+    return (
+      <View style={viewType === 'grid' ? styles.gridItem : styles.listItemOuter}>
+        <TouchableOpacity
+          style={viewType === 'grid' ? styles.card : styles.listItem}
+          activeOpacity={0.85}
+          onPress={() =>
+            router.push({
+              pathname: '/product-detail',
+              params: { ...item, sharedId: `product-image-${item.id}` },
+            })
+          }
+        >
+          {Platform.OS === 'web' || !SharedElement ? (
+            <Image source={{ uri: item.image_url }} style={styles.image} />
+          ) : (
+            <SharedElement id={`product-image-${item.id}`} style={styles.image}>
+              <Image source={{ uri: item.image_url }} style={styles.image} />
+            </SharedElement>
+          )}
+
+          <View>
+            <View style={styles.productTop}>
+              <Text style={styles.name}>{item.name}</Text>
+              {user && (
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    handleToggleFavorite(item.id);
+                  }}
+                  style={{ marginLeft: 8 }}
+                >
+                  {fav ? (
+                    <MCIcon name="heart" size={22} color="#FF7A00" />
+                  ) : (
+                    <Icon name="heart" size={22} color="#E0E0E0" />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={styles.price}>MZN {item.price}</Text>
+            <TouchableOpacity
+              style={[styles.cartBtn, inCart && styles.cartBtnInCart]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                handleAddToCart(item);
+              }}
+            >
+              <Text style={styles.cartBtnText}>
+                {inCart ? 'No carrinho' : 'Adicionar ao carrinho'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
       <FlatList
         data={filtered}
         key={viewType}
-        keyExtractor={item => item.id.toString()}
+        keyExtractor={(item) => item.id.toString()}
         numColumns={viewType === 'grid' ? 2 : 1}
-        renderItem={renderProduct}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
-        refreshing={loading}
-        onRefresh={fetchProducts}
+        renderItem={renderItem}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={<View style={{ height: 40 }} />}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={fetchProducts} />
+        }
+        showsVerticalScrollIndicator={false}
       />
-
-      {/* Modal do carrinho */}
-      <Modal visible={cartVisible} animationType="slide" transparent>
-        <View style={styles.cartModalBg}>
-          <View style={styles.cartModal}>
-            <Text style={styles.cartModalTitle}>Carrinho</Text>
-            {cart.length === 0 ? (
-              <Text style={styles.emptyText}>Seu carrinho está vazio.</Text>
-            ) : (
-              <>
-                <FlatList
-                  data={cart}
-                  keyExtractor={item => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <View style={styles.cartItemRow}>
-                      <Image source={{ uri: item.image_url }} style={styles.cartItemImg} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.name}>{item.name}</Text>
-                        <Text style={styles.priceCart}>MZN {item.price}</Text>
-                        <View style={styles.qtyRow}>
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => handleChangeQty(item.id, -1)}>
-                            <Text style={styles.qtyBtnText}>-</Text>
-                          </TouchableOpacity>
-                          <Text style={styles.qtyText}>{item.qty}</Text>
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => handleChangeQty(item.id, 1)}>
-                            <Text style={styles.qtyBtnText}>+</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveFromCart(item.id)}>
-                            <Text style={styles.removeBtnIcon}>🗑️</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-                  style={{ maxHeight: 250 }}
-                />
-                <View style={styles.cartTotalRow}>
-                  <Text style={styles.cartTotalLabel}>Total:</Text>
-                  <Text style={styles.cartTotalValue}>MZN {cartTotal.toFixed(2)}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.buyBtn}
-                  onPress={() => alert('Compra realizada!')}
-                  disabled={cart.length === 0}
-                >
-                  <Text style={styles.buyBtnText}>Comprar</Text>
-                </TouchableOpacity>
-              </>
-            )}
-            <TouchableOpacity style={styles.closeCartBtn} onPress={() => setCartVisible(false)}>
-              <Text style={styles.closeCartBtnText}>Fechar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FDFDFB', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
-  cartIconBtn: { marginRight: 12, position: 'relative', backgroundColor: '#fff', borderRadius: 24, padding: 8, elevation: 2 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FDFDFB',
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  headerWrap: {
+    width: '100%',
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  cartIconBtn: {
+    marginRight: 12,
+    position: 'relative',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 8,
+    elevation: 2,
+  },
   cartIcon: { fontSize: 28, color: '#008A44' },
-  cartBadge: { position: 'absolute', top: 2, right: 2, backgroundColor: '#FF7A00', borderRadius: 12, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
-  cartBadgeText: { color: '#fff', fontWeight: 'bold', fontSize: 12, textAlign: 'center' },
-  title: { fontSize: 24, fontWeight: '700', color: '#008A44', flex: 1, textAlign: 'center', fontFamily: 'DM Sans' },
-  searchRow: { flexDirection: 'row', marginBottom: 12 },
-  searchInput: { flex: 1, borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 8, padding: 12, backgroundColor: '#fff', fontSize: 16, color: '#1A1A1A' },
+  cartBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#FF7A00',
+    borderRadius: 12,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#008A44',
+    textAlign: 'center',
+    fontFamily: 'DM Sans',
+  },
+  searchRow: { marginBottom: 12 },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    fontSize: 16,
+    color: '#1A1A1A',
+  },
+  categoryContainer: { backgroundColor: '#fff', marginBottom: 12 },
   toggleRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 20 },
-  toggleIconBtn: { marginHorizontal: 8, padding: 10, borderRadius: 8, backgroundColor: '#E0E0E0' },
+  toggleIconBtn: {
+    marginHorizontal: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#E0E0E0',
+  },
   toggleIconBtnActive: { backgroundColor: '#008A44' },
   toggleIcon: { fontSize: 22, color: '#008A44' },
   toggleIconActive: { color: '#fff' },
-  card: { flex: 1, margin: 10, backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2 },
-  listItem: { flexDirection: 'row', marginVertical: 10, backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2 },
-  image: { width: 80, height: 80, borderRadius: 12, marginBottom: 12, backgroundColor: '#FDFDFB' },
-  name: { fontWeight: 'bold', fontSize: 15, marginBottom: 2, color: '#1A1A1A', fontFamily: 'DM Sans' },
+  gridItem: { flexBasis: '48%', maxWidth: '48%', marginBottom: 16 },
+  listItemOuter: { width: '100%', marginBottom: 12 },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 18,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+  },
+  listItem: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 18,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+  },
+  productTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  image: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#FDFDFB',
+  },
+  name: { fontWeight: 'bold', fontSize: 15, color: '#1A1A1A', fontFamily: 'DM Sans' },
   price: { color: '#008A44', fontWeight: 'bold', fontSize: 16, marginBottom: 2 },
-  priceCart: { color: '#008A44', fontWeight: 'bold', fontSize: 15, marginBottom: 2 },
-  cartBtn: { marginTop: 8, backgroundColor: '#FF7A00', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 16, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', elevation: 1 },
+  cartBtn: {
+    marginTop: 8,
+    backgroundColor: '#FF7A00',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 1,
+  },
   cartBtnInCart: { backgroundColor: '#008A44' },
   cartBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  inCartIcon: { marginLeft: 6, fontSize: 16 },
-  cartModalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.12)', justifyContent: 'center', alignItems: 'center' },
-  cartModal: { backgroundColor: '#fff', borderRadius: 16, padding: 28, width: '92%', maxWidth: 440, elevation: 3 },
-  cartModalTitle: { fontSize: 22, fontWeight: 'bold', color: '#008A44', marginBottom: 22, textAlign: 'center', fontFamily: 'DM Sans' },
-  cartItemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
-  cartItemImg: { width: 48, height: 48, borderRadius: 8, marginRight: 14, backgroundColor: '#FDFDFB' },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
-  qtyBtn: { backgroundColor: '#E0E0E0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, marginHorizontal: 2 },
-  qtyBtnText: { fontSize: 18, fontWeight: 'bold', color: '#008A44' },
-  qtyText: { fontSize: 16, fontWeight: 'bold', marginHorizontal: 8, color: '#1A1A1A' },
-  removeBtn: { marginLeft: 10, backgroundColor: '#FF7A00', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 2, justifyContent: 'center', alignItems: 'center' },
-  removeBtnIcon: { color: '#fff', fontSize: 18 },
-  cartTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, paddingTop: 10, borderTopWidth: 1, borderColor: '#E0E0E0' },
-  cartTotalLabel: { fontSize: 18, fontWeight: 'bold', color: '#008A44' },
-  cartTotalValue: { fontSize: 20, fontWeight: 'bold', color: '#FF7A00' },
-  buyBtn: { marginTop: 28, backgroundColor: '#FF7A00', borderRadius: 8, paddingVertical: 16, alignItems: 'center', elevation: 1 },
-  buyBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
-  closeCartBtn: { marginTop: 18, backgroundColor: '#008A44', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
-  closeCartBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  emptyText: { textAlign: 'center', marginVertical: 24, color: '#5C5C5C', fontSize: 16 },
 });

@@ -1,12 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuthUser } from '../../hooks/useAuthUser';
+import { supabase } from '../../lib/supabaseClient';
 import CategoryFilter from '../components/CategoryFilter';
 
 let SharedElement: any = null;
@@ -17,9 +17,6 @@ if (Platform.OS !== 'web') {
 // Favoritos
 type Favorite = { id: number; product_id: number };
 
-const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function ProductCatalogScreen() {
   const router = useRouter();

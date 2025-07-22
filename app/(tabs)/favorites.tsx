@@ -1,15 +1,12 @@
 
-import { createClient } from '@supabase/supabase-js';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../../hooks/useAuthUser';
+import { supabase } from '../../lib/supabaseClient';
 import CategoryFilter from '../components/CategoryFilter';
 
-const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
@@ -138,103 +135,67 @@ export default function FavoritesScreen() {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Meus Favoritos</Text>
-          <View style={styles.searchContainer}>
-            <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar favoritos..."
-              value={search}
-              onChangeText={setSearch}
-              placeholderTextColor="#999"
-            />
-          </View>
+  // HEADER COMPONENTS FOR STICKY CATEGORY
+  const headerComponents = [
+    <View key="header" style={styles.header}>
+      <View style={styles.headerContent}>
+        <Text style={styles.title}>Meus Favoritos</Text>
+        <View style={styles.searchContainer}>
+          <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar favoritos..."
+            value={search}
+            onChangeText={setSearch}
+            placeholderTextColor="#999"
+          />
         </View>
       </View>
-
-      <View style={styles.categoryContainer}>
-        <CategoryFilter
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelect={setSelectedCategory}
-        />
-      </View>
-
-      <View style={styles.controlsRow}>
-        <Text style={styles.resultsText}>
-          {filtered.length} favorito{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
-        </Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity
-            style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
-            onPress={() => setViewType('list')}
-          >
-            <Icon name="list" size={18} color={viewType === 'list' ? '#fff' : '#008A44'} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleIconBtn, viewType === 'grid' && styles.toggleIconBtnActive]}
-            onPress={() => setViewType('grid')}
-          >
-            <Icon name="grid" size={18} color={viewType === 'grid' ? '#fff' : '#008A44'} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <FlatList
-        data={filtered}
-        key={viewType}
-        keyExtractor={item => item.id.toString()}
-        numColumns={viewType === 'grid' ? 2 : 1}
-        renderItem={renderProduct}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 40 }}>
-            <Icon name="heart" size={48} color="#E0E0E0" style={{ marginBottom: 8 }} />
-            <Text style={styles.emptyText}>Nenhum favorito encontrado.</Text>
-          </View>
-        }
-        refreshing={loading}
-        onRefresh={fetchFavorites}
+    </View>,
+    <View key="category" style={styles.categoryContainer}>
+      <CategoryFilter
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onSelect={setSelectedCategory}
       />
     </View>
+  ];
+
+  return (
+    <FlatList
+      data={filtered}
+      key={viewType}
+      keyExtractor={item => item.id.toString()}
+      numColumns={viewType === 'grid' ? 2 : 1}
+      renderItem={renderProduct}
+      contentContainerStyle={{ paddingBottom: 32 }}
+      ListEmptyComponent={<Text style={styles.emptyText}>Nenhum favorito encontrado.</Text>}
+      refreshing={loading}
+      onRefresh={fetchFavorites}
+      ListHeaderComponent={() => <>{headerComponents}</>}
+      stickyHeaderIndices={[0, 1]}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
   header: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    // ...existing code...
   },
   headerContent: {
-    gap: 16,
+    // ...existing code...
   },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center' },
+  title: {
+    // ...existing code...
+  },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    // ...existing code...
   },
   searchIcon: {
-    marginRight: 12,
+    // ...existing code...
   },
   searchInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#1A1A1A',
+    // ...existing code...
   },
   categoryContainer: {
     backgroundColor: '#fff',
@@ -275,6 +236,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#008A44',
     elevation: 1,
   },
+  emptyText: { textAlign: 'center', marginVertical: 24, color: '#5C5C5C', fontSize: 16 },
   // Grid styles
   gridCard: {
     flex: 1,
@@ -370,7 +332,7 @@ const styles = StyleSheet.create({
     color: '#008A44',
     fontWeight: 'bold',
     fontSize: 18,
-    marginBottom: 8,
-  },
-  emptyText: { textAlign: 'center', marginVertical: 24, color: '#5C5C5C', fontSize: 16 },
+    marginBottom: 8
+  }
 });
+
