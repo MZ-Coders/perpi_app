@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useAuthUser } from '../../hooks/useAuthUser';
 import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -31,6 +33,7 @@ export default function ProductCatalogScreen() {
   const [cartVisible, setCartVisible] = useState(false);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const user = useAuthUser();
 
 
   useEffect(() => {
@@ -140,49 +143,110 @@ export default function ProductCatalogScreen() {
     // Busca o nome da categoria pelo id
     const categoryObj = categories.find((c: any) => c.id === item.category_id);
     const category_name = categoryObj ? categoryObj.name : '';
+    
+    if (viewType === 'grid') {
+      return (
+        <TouchableOpacity
+          style={styles.gridCard}
+          activeOpacity={0.9}
+          onPress={() => router.push({ pathname: '/product-detail', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
+        >
+          <View style={styles.imageContainer}>
+            {Platform.OS === 'web' || !SharedElement ? (
+              <Image source={{ uri: item.image_url }} style={styles.gridImage} />
+            ) : (
+              <SharedElement id={sharedId} style={styles.gridImage} onNode={() => {}}>
+                <Image source={{ uri: item.image_url }} style={styles.gridImage} />
+              </SharedElement>
+            )}
+            {user && (
+              <TouchableOpacity 
+                style={styles.favoriteBtn}
+                onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
+              >
+                {isFav ? (
+                  <MCIcon name="heart" size={20} color="#FF7A00" />
+                ) : (
+                  <Icon name="heart" size={20} color="#fff" />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          <View style={styles.gridCardContent}>
+            <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
+            <Text style={styles.gridPrice}>MZN {item.price}</Text>
+            
+            {user && (
+              <TouchableOpacity
+                style={[styles.gridCartBtn, inCart && styles.gridCartBtnInCart]}
+                onPress={e => {
+                  e.stopPropagation();
+                  handleAddToCart(item);
+                }}
+              >
+                {inCart ? (
+                  <Icon name="check" size={16} color="#fff" />
+                ) : (
+                  <Icon name="plus" size={16} color="#fff" />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+    
     return (
       <TouchableOpacity
-        style={viewType === 'grid' ? styles.card : styles.listItem}
-        activeOpacity={0.85}
+        style={styles.listItem}
+        activeOpacity={0.9}
         onPress={() => router.push({ pathname: '/product-detail', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
       >
-        {Platform.OS === 'web' || !SharedElement ? (
-          <Image source={{ uri: item.image_url }} style={styles.image} />
-        ) : (
-          <SharedElement id={sharedId} style={styles.image} onNode={() => {}}>
-            <Image source={{ uri: item.image_url }} style={styles.image} />
-          </SharedElement>
-        )}
-        {/* Favorito absoluto no topo direito */}
-        <TouchableOpacity
-          style={styles.favoriteIconAbs}
-          onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
-        >
-          {isFav ? (
-            <MCIcon name="heart" size={22} color="#FF7A00" />
+        <View style={styles.listImageContainer}>
+          {Platform.OS === 'web' || !SharedElement ? (
+            <Image source={{ uri: item.image_url }} style={styles.listImage} />
           ) : (
-            <Icon name="heart" size={22} color="#BDBDBD" />
+            <SharedElement id={sharedId} style={styles.listImage} onNode={() => {}}>
+              <Image source={{ uri: item.image_url }} style={styles.listImage} />
+            </SharedElement>
           )}
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.price}>MZN {item.price}</Text>
-          <TouchableOpacity
-            style={[
-              styles.cartBtn,
-              inCart ? styles.cartBtnInCart : styles.cartBtnInactive
-            ]}
-            onPress={e => {
-              e.stopPropagation();
-              handleAddToCart(item);
-            }}
-          >
-            {inCart ? (
-              <MCIcon name="cart" size={22} color="#FF7A00" />
-            ) : (
-              <MCIcon name="cart-outline" size={22} color="#BDBDBD" />
+        </View>
+        
+        <View style={styles.listContent}>
+          <View style={styles.listHeader}>
+            <Text style={styles.listName} numberOfLines={2}>{item.name}</Text>
+            {user && (
+              <TouchableOpacity 
+                style={styles.listFavoriteBtn}
+                onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
+              >
+                {isFav ? (
+                  <MCIcon name="heart" size={22} color="#FF7A00" />
+                ) : (
+                  <Icon name="heart" size={22} color="#E0E0E0" />
+                )}
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.listPrice}>MZN {item.price}</Text>
+          
+          {user && (
+            <TouchableOpacity
+              style={[styles.listCartBtn, inCart && styles.listCartBtnInCart]}
+              onPress={e => {
+                e.stopPropagation();
+                handleAddToCart(item);
+              }}
+            >
+              <Text style={styles.listCartBtnText}>
+                {inCart ? `No carrinho${cartItem && cartItem.qty > 1 ? ` (${cartItem.qty})` : ''}` : 'Adicionar'}
+              </Text>
+              {!inCart && <Icon name="shopping-cart" size={16} color="#fff" style={{ marginLeft: 6 }} />}
+              {inCart && <Icon name="check" size={16} color="#fff" style={{ marginLeft: 6 }} />}
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -193,29 +257,39 @@ export default function ProductCatalogScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Topo com ícone do carrinho */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => setCartVisible(true)} style={styles.cartIconBtn}>
-            <Icon name="shopping-cart" size={28} style={styles.cartIcon} />
-          {cart.length > 0 && (
-            <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cart.length}</Text></View>
-          )}
-        </TouchableOpacity>
-        <Text style={styles.title}>Catálogo de Produtos</Text>
-      </View>
+      {/* Header com gradiente */}
+      <LinearGradient
+        colors={['#008A44', '#00B359']}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerTop}>
+            <Text style={styles.title}>Perpi Shop</Text>
+            {user && (
+              <TouchableOpacity onPress={() => setCartVisible(true)} style={styles.cartIconBtn}>
+                <Icon name="shopping-cart" size={24} color="#fff" />
+                {cart.length > 0 && (
+                  <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cart.length}</Text></View>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          <View style={styles.searchContainer}>
+            <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar produtos..."
+              value={search}
+              onChangeText={setSearch}
+              placeholderTextColor="#999"
+            />
+          </View>
+        </View>
+      </LinearGradient>
 
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar produtos..."
-          value={search}
-          onChangeText={setSearch}
-          placeholderTextColor="#5C5C5C"
-        />
-      </View>
-
-      {/* Filtro de categorias - componente separado, destacado */}
-      <View style={{ backgroundColor: '#F3F3F3', paddingVertical: 10, marginBottom: 8, borderRadius: 12 }}>
+      {/* Filtro de categorias */}
+      <View style={styles.categoryContainer}>
         <CategoryFilter
           categories={categories}
           selectedCategory={selectedCategory}
@@ -223,19 +297,24 @@ export default function ProductCatalogScreen() {
         />
       </View>
 
-      <View style={styles.toggleRow}>
-        <TouchableOpacity
-          style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
-          onPress={() => setViewType('list')}
-        >
-          <Icon name="list" size={22} style={[styles.toggleIcon, viewType === 'list' && styles.toggleIconActive]} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleIconBtn, viewType === 'grid' && styles.toggleIconBtnActive]}
-          onPress={() => setViewType('grid')}
-        >
-          <Icon name="grid" size={22} style={[styles.toggleIcon, viewType === 'grid' && styles.toggleIconActive]} />
-        </TouchableOpacity>
+      <View style={styles.controlsRow}>
+        <Text style={styles.resultsText}>
+          {filtered.length} produto{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+        </Text>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity
+            style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
+            onPress={() => setViewType('list')}
+          >
+            <Icon name="list" size={18} color={viewType === 'list' ? '#fff' : '#008A44'} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleIconBtn, viewType === 'grid' && styles.toggleIconBtnActive]}
+            onPress={() => setViewType('grid')}
+          >
+            <Icon name="grid" size={18} color={viewType === 'grid' ? '#fff' : '#008A44'} />
+          </TouchableOpacity>
+        </View>
       </View>
       <FlatList
         data={filtered}
@@ -308,34 +387,244 @@ export default function ProductCatalogScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FDFDFB', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
-  cartIconBtn: { marginRight: 12, position: 'relative', backgroundColor: '#fff', borderRadius: 24, padding: 8, elevation: 2 },
-  cartIcon: { fontSize: 28, color: '#008A44' },
-  cartBadge: { position: 'absolute', top: 2, right: 2, backgroundColor: '#FF7A00', borderRadius: 12, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
-  cartBadgeText: { color: '#fff', fontWeight: 'bold', fontSize: 12, textAlign: 'center' },
-  title: { fontSize: 24, fontWeight: '700', color: '#008A44', flex: 1, textAlign: 'center', fontFamily: 'DM Sans' },
-  searchRow: { flexDirection: 'row', marginBottom: 12 },
-  searchInput: { flex: 1, borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 8, padding: 12, backgroundColor: '#fff', fontSize: 16, color: '#1A1A1A' },
-  toggleRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 20 },
-  toggleIconBtn: { marginHorizontal: 8, padding: 10, borderRadius: 8, backgroundColor: '#E0E0E0' },
-  toggleIconBtnActive: { backgroundColor: '#008A44' },
-  toggleIcon: { fontSize: 22, color: '#008A44' },
-  toggleIconActive: { color: '#fff' },
-  card: { flex: 1, margin: 10, backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, position: 'relative' },
-  listItem: { flexDirection: 'row', marginVertical: 10, backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, position: 'relative' },
-  favoriteIconAbs: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    zIndex: 10,
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F8F9FA' 
+  },
+  header: {
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    gap: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    color: '#fff',
+  },
+  cartIconBtn: { 
+    position: 'relative', 
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', 
+    borderRadius: 20, 
+    padding: 10,
+  },
+  cartBadge: { 
+    position: 'absolute', 
+    top: -2, 
+    right: -2, 
+    backgroundColor: '#FF7A00', 
+    borderRadius: 10, 
+    minWidth: 20, 
+    height: 20, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    paddingHorizontal: 4 
+  },
+  cartBadgeText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 12, 
+    textAlign: 'center' 
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: { 
+    flex: 1, 
+    paddingVertical: 14, 
+    fontSize: 16, 
+    color: '#1A1A1A' 
+  },
+  categoryContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    marginBottom: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    marginBottom: 8,
+  },
+  resultsText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  toggleRow: { 
+    flexDirection: 'row',
+    backgroundColor: '#F0F0F0',
+    borderRadius: 8,
+    padding: 2,
+  },
+  toggleIconBtn: { 
+    paddingHorizontal: 12, 
+    paddingVertical: 8, 
+    borderRadius: 6,
+  },
+  toggleIconBtnActive: { 
+    backgroundColor: '#008A44',
+    elevation: 1,
+  },
+  
+  // Grid styles
+  gridCard: {
+    flex: 1,
+    margin: 8,
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 4,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  gridImage: {
+    width: '100%',
+    height: 140,
+    backgroundColor: '#F8F9FA',
+  },
+  favoriteBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 16,
+    padding: 6,
+  },
+  gridCardContent: {
+    padding: 12,
+  },
+  gridName: {
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#1A1A1A',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  gridPrice: {
+    color: '#008A44',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  gridCartBtn: {
+    backgroundColor: '#FF7A00',
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
     elevation: 2,
   },
-  image: { width: 80, height: 80, borderRadius: 12, marginBottom: 12, backgroundColor: '#FDFDFB' },
-  name: { fontWeight: 'bold', fontSize: 15, marginBottom: 2, color: '#1A1A1A', fontFamily: 'DM Sans' },
+  gridCartBtnInCart: {
+    backgroundColor: '#008A44',
+  },
+  
+  // List styles
+  listItem: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginVertical: 6,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  listImageContainer: {
+    marginRight: 16,
+  },
+  listImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+  },
+  listContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  listName: {
+    fontWeight: '600',
+    fontSize: 16,
+    color: '#1A1A1A',
+    flex: 1,
+    marginRight: 8,
+    lineHeight: 20,
+  },
+  listFavoriteBtn: {
+    padding: 4,
+  },
+  listPrice: {
+    color: '#008A44',
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: 8,
+  },
+  listCartBtn: {
+    backgroundColor: '#FF7A00',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    elevation: 2,
+  },
+  listCartBtnInCart: {
+    backgroundColor: '#008A44',
+  },
+  listCartBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  
+  // Legacy styles (mantidos para compatibilidade)
+  name: { fontWeight: 'bold', fontSize: 15, marginBottom: 2, color: '#1A1A1A' },
   price: { color: '#008A44', fontWeight: 'bold', fontSize: 16, marginBottom: 2 },
   priceCart: { color: '#008A44', fontWeight: 'bold', fontSize: 15, marginBottom: 2 },
   cartBtn: { marginTop: 8, backgroundColor: '#FF7A00', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 16, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', elevation: 1 },

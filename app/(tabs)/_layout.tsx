@@ -6,9 +6,11 @@ import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawe
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
 import DrawerUserHeader from '../components/DrawerUserHeader';
+import { useAuthUser } from '../../hooks/useAuthUser';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const user = useAuthUser();
   return (
     <Drawer
       screenOptions={{
@@ -38,20 +40,26 @@ export default function TabLayout() {
           drawerLabel: 'Explorar',
         }}
       />
-      <Drawer.Screen
-        name="favorites"
-        options={{
-          title: 'Favoritos',
-          drawerLabel: 'Favoritos',
-        }}
-      />
-      <Drawer.Screen
-        name="profile"
-        options={{
-          title: 'Perfil',
-          drawerLabel: 'Perfil',
-        }}
-      />
+      {/* Só mostra Favoritos e Perfil se autenticado */}
+      {/* Só mostra Favoritos e Perfil se autenticado */}
+      {user ? (
+        <>
+          <Drawer.Screen
+            name="favorites"
+            options={{
+              title: 'Favoritos',
+              drawerLabel: 'Favoritos',
+            }}
+          />
+          <Drawer.Screen
+            name="profile"
+            options={{
+              title: 'Perfil',
+              drawerLabel: 'Perfil',
+            }}
+          />
+        </>
+      ) : null}
     </Drawer>
   );
 }
