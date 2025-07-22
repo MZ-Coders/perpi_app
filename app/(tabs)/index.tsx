@@ -2,7 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuthUser } from '../../hooks/useAuthUser';
@@ -146,7 +146,7 @@ export default function ProductCatalogScreen() {
         <TouchableOpacity
           style={styles.gridCard}
           activeOpacity={0.9}
-          onPress={() => router.push({ pathname: '/product-detail', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
+          onPress={() => router.push({ pathname: '/detalhes', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
         >
           <View style={styles.imageContainer}>
             {Platform.OS === 'web' || !SharedElement ? (
@@ -198,7 +198,7 @@ export default function ProductCatalogScreen() {
       <TouchableOpacity
         style={styles.listItem}
         activeOpacity={0.9}
-        onPress={() => router.push({ pathname: '/product-detail', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
+        onPress={() => router.push({ pathname: '/detalhes', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
       >
         <View style={styles.listImageContainer}>
           {Platform.OS === 'web' || !SharedElement ? (
@@ -254,7 +254,7 @@ export default function ProductCatalogScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header com gradiente */}
+      {/* Header com gradiente - fora do ScrollView para ficar fixo */}
       <LinearGradient
         colors={['#008A44', '#00B359']}
         style={styles.header}
@@ -286,45 +286,58 @@ export default function ProductCatalogScreen() {
         </View>
       </LinearGradient>
 
-      {/* Filtro de categorias */}
-      <View style={styles.categoryContainer}>
-        <CategoryFilter
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelect={setSelectedCategory}
-        />
-      </View>
-
-      <View style={styles.controlsRow}>
-        <Text style={styles.resultsText}>
-          {filtered.length} produto{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
-        </Text>
-        <View style={styles.toggleRow}>
-          <TouchableOpacity
-            style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
-            onPress={() => setViewType('list')}
-          >
-            <Icon name="list" size={18} color={viewType === 'list' ? '#fff' : '#008A44'} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleIconBtn, viewType === 'grid' && styles.toggleIconBtnActive]}
-            onPress={() => setViewType('grid')}
-          >
-            <Icon name="grid" size={18} color={viewType === 'grid' ? '#fff' : '#008A44'} />
-          </TouchableOpacity>
+      {/* Conteúdo scrollável */}
+      <ScrollView 
+        style={styles.scrollableContent}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+        showsVerticalScrollIndicator={true}
+        bounces={true}
+      >
+        {/* Filtro de categorias */}
+        <View style={styles.categoryContainer}>
+          <CategoryFilter
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelect={setSelectedCategory}
+          />
         </View>
-      </View>
-      <FlatList
-        data={filtered}
-        key={viewType}
-        keyExtractor={item => item.id.toString()}
-        numColumns={viewType === 'grid' ? 2 : 1}
-        renderItem={renderProduct}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
-        refreshing={loading}
-        onRefresh={fetchProducts}
-      />
+
+        <View style={styles.controlsRow}>
+          <Text style={styles.resultsText}>
+            {filtered.length} produto{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+          </Text>
+          <View style={styles.toggleRow}>
+            <TouchableOpacity
+              style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
+              onPress={() => setViewType('list')}
+            >
+              <Icon name="list" size={18} color={viewType === 'list' ? '#fff' : '#008A44'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleIconBtn, viewType === 'grid' && styles.toggleIconBtnActive]}
+              onPress={() => setViewType('grid')}
+            >
+              <Icon name="grid" size={18} color={viewType === 'grid' ? '#fff' : '#008A44'} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Lista de produtos */}
+        <FlatList
+          data={filtered}
+          key={viewType}
+          keyExtractor={item => item.id.toString()}
+          numColumns={viewType === 'grid' ? 2 : 1}
+          renderItem={renderProduct}
+          contentContainerStyle={{ paddingBottom: 32 }}
+          ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
+          refreshing={loading}
+          onRefresh={fetchProducts}
+          nestedScrollEnabled={true}
+          scrollEnabled={false} // Desabilita o scroll do FlatList para usar apenas o ScrollView principal
+          scrollToOverflowEnabled={true}
+        />
+      </ScrollView>
 
       {/* Modal do carrinho */}
       <Modal visible={cartVisible} animationType="slide" transparent>
@@ -388,6 +401,10 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: '#F8F9FA' 
+  },
+  scrollableContent: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
   },
   header: {
     paddingTop: 50,
