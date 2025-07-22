@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import CategoryFilter from '../components/CategoryFilter';
 import Icon from 'react-native-vector-icons/Feather';
 import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import CategoryFilter from '../components/CategoryFilter';
 
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
@@ -93,7 +92,8 @@ export default function ProductCatalogScreen() {
 
   async function fetchProducts() {
     setLoading(true);
-    const { data, error } = await supabase.from('products').select('id, name, price, image_url, category_id');
+    // Inclui description no select
+    const { data, error } = await supabase.from('products').select('id, name, price, image_url, category_id, description, stock_quantity, is_active');
     setLoading(false);
     if (!error && data) setProducts(data);
   }
@@ -137,11 +137,14 @@ export default function ProductCatalogScreen() {
     const cartItem = cart.find((p) => p.id === item.id);
     const sharedId = `product-image-${item.id}`;
     const isFav = favorites.some(f => f.product_id === item.id);
+    // Busca o nome da categoria pelo id
+    const categoryObj = categories.find((c: any) => c.id === item.category_id);
+    const category_name = categoryObj ? categoryObj.name : '';
     return (
       <TouchableOpacity
         style={viewType === 'grid' ? styles.card : styles.listItem}
         activeOpacity={0.85}
-        onPress={() => router.push({ pathname: '/product-detail', params: { ...item, sharedId } })}
+        onPress={() => router.push({ pathname: '/product-detail', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
       >
         {Platform.OS === 'web' || !SharedElement ? (
           <Image source={{ uri: item.image_url }} style={styles.image} />

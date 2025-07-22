@@ -2,8 +2,8 @@
 
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Drawer } from 'expo-router/drawer';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
+import { Drawer } from 'expo-router/drawer';
 import React from 'react';
 import DrawerUserHeader from '../components/DrawerUserHeader';
 

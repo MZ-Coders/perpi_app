@@ -9,7 +9,17 @@ if (Platform.OS !== 'web') {
 // Espera receber os dados do produto via params
 export default function ProductDetailScreen() {
   const params = useLocalSearchParams();
-  const { name, price, image_url, sharedId } = params;
+  const {
+    name,
+    price,
+    image_url,
+    sharedId,
+    description,
+    stock_quantity,
+    is_active,
+    category_id,
+    category_name
+  } = params;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -22,10 +32,20 @@ export default function ProductDetailScreen() {
       )}
       <Text style={styles.name}>{name}</Text>
       <Text style={styles.price}>MZN {price}</Text>
-      {/* Adicione aqui mais detalhes do produto, descrição, avaliações, etc. */}
+      <Text style={styles.description}>
+        <Text style={styles.detailLabel}>Descrição:</Text> {description && String(description).trim() ? description : 'Sem descrição'}
+      </Text>
+      <Text style={styles.detail}><Text style={styles.detailLabel}>Categoria:</Text> {category_name || category_id}</Text>
+      <Text style={styles.detail}><Text style={styles.detailLabel}>Estoque:</Text> {stock_quantity}</Text>
+      <Text style={styles.detail}><Text style={styles.detailLabel}>Ativo:</Text> {(
+        is_active === true ||
+        is_active === 'true' ||
+        (Array.isArray(is_active) && is_active[0] === 'true')
+      ) ? 'Sim' : 'Não'}</Text>
     </ScrollView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -54,5 +74,21 @@ const styles = StyleSheet.create({
     color: '#FF7A00',
     marginBottom: 24,
     textAlign: 'center',
+  },
+  description: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 18,
+    textAlign: 'center',
+  },
+  detail: {
+    fontSize: 15,
+    color: '#444',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  detailLabel: {
+    fontWeight: 'bold',
+    color: '#008A44',
   },
 });
