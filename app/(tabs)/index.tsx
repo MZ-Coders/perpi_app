@@ -4,6 +4,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CategoryFilter from '../components/CategoryFilter';
+import Icon from 'react-native-vector-icons/Feather';
+import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
@@ -152,7 +154,11 @@ export default function ProductCatalogScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={styles.name}>{item.name}</Text>
             <TouchableOpacity onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}>
-              <Text style={{ fontSize: 22 }}>{isFav ? '❤️' : '🤍'}</Text>
+              {isFav ? (
+                <MCIcon name="heart" size={22} color="#FF7A00" />
+              ) : (
+                <Icon name="heart" size={22} color="#E0E0E0" />
+              )}
             </TouchableOpacity>
           </View>
           <Text style={styles.price}>MZN {item.price}</Text>
@@ -166,6 +172,7 @@ export default function ProductCatalogScreen() {
             <Text style={styles.cartBtnText}>
               {inCart ? `No carrinho${cartItem && cartItem.qty > 1 ? ` (${cartItem.qty})` : ''}` : 'Adicionar ao carrinho'}
             </Text>
+            {!inCart && <Icon name="shopping-cart" size={18} color="#fff" style={{ marginLeft: 6 }} />}
             {inCart && <Text style={styles.inCartIcon}>✔️</Text>}
           </TouchableOpacity>
         </View>
@@ -181,7 +188,7 @@ export default function ProductCatalogScreen() {
       {/* Topo com ícone do carrinho */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => setCartVisible(true)} style={styles.cartIconBtn}>
-          <Text style={styles.cartIcon}>🛒</Text>
+            <Icon name="shopping-cart" size={28} style={styles.cartIcon} />
           {cart.length > 0 && (
             <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cart.length}</Text></View>
           )}
@@ -213,13 +220,13 @@ export default function ProductCatalogScreen() {
           style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
           onPress={() => setViewType('list')}
         >
-          <Text style={[styles.toggleIcon, viewType === 'list' && styles.toggleIconActive]}>📃</Text>
+          <Icon name="list" size={22} style={[styles.toggleIcon, viewType === 'list' && styles.toggleIconActive]} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.toggleIconBtn, viewType === 'grid' && styles.toggleIconBtnActive]}
           onPress={() => setViewType('grid')}
         >
-          <Text style={[styles.toggleIcon, viewType === 'grid' && styles.toggleIconActive]}>🔲</Text>
+          <Icon name="grid" size={22} style={[styles.toggleIcon, viewType === 'grid' && styles.toggleIconActive]} />
         </TouchableOpacity>
       </View>
       <FlatList
@@ -261,7 +268,7 @@ export default function ProductCatalogScreen() {
                             <Text style={styles.qtyBtnText}>+</Text>
                           </TouchableOpacity>
                           <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveFromCart(item.id)}>
-                            <Text style={styles.removeBtnIcon}>🗑️</Text>
+                            <Icon name="trash-2" size={18} style={styles.removeBtnIcon} />
                           </TouchableOpacity>
                         </View>
                       </View>

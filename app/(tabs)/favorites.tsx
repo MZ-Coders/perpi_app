@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
@@ -56,11 +57,16 @@ export default function FavoritesScreen() {
               <Text style={styles.price}>MZN {item.products?.price}</Text>
             </View>
             <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveFavorite(item.id)}>
-              <Text style={styles.removeBtnIcon}>🗑️</Text>
+              <Icon name="trash-2" size={22} style={styles.removeBtnIcon} />
             </TouchableOpacity>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.emptyText}>Nenhum favorito encontrado.</Text>}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', marginTop: 40 }}>
+            <Icon name="heart" size={48} color="#E0E0E0" style={{ marginBottom: 8 }} />
+            <Text style={styles.emptyText}>Nenhum favorito encontrado.</Text>
+          </View>
+        }
         refreshing={loading}
         onRefresh={fetchFavorites}
         contentContainerStyle={{ paddingBottom: 32 }}
