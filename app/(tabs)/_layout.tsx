@@ -3,9 +3,9 @@
 
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
-import { Drawer } from 'expo-router/drawer';
+import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
+import { Drawer } from 'expo-router/drawer';
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
@@ -39,7 +39,6 @@ export default function TabLayout() {
             { key: 'profile', label: 'Perfil', icon: 'user' },
           ] : []),
           { key: 'explore', label: 'Explorar', icon: 'search' },
-          { key: 'theme-settings', label: 'Tema', icon: 'moon' },
         ];
         return (
           <DrawerContentScrollView {...props}>
@@ -124,14 +123,6 @@ export default function TabLayout() {
         options={{
           title: 'Explore',
           drawerLabel: 'Explorar',
-        }}
-      />
-      {/* Opção de tema sempre visível */}
-      <Drawer.Screen
-        name="theme-settings"
-        options={{
-          title: 'Tema',
-          drawerLabel: 'Tema',
         }}
       />
       {/* Só mostra Favoritos e Perfil se autenticado */}
