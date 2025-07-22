@@ -1,3 +1,4 @@
+// As rotas de Favoritos e Perfil são declaradas dentro do componente, não fora!
 
 
 import { Colors } from '@/constants/Colors';
@@ -15,6 +16,12 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const user = useAuthUser();
   const router = useRouter();
+  // Só renderiza após checar o estado do usuário (undefined = carregando)
+  const [checked, setChecked] = React.useState(false);
+  React.useEffect(() => {
+    setChecked(true);
+  }, [user]);
+  if (!checked) return null;
   return (
     <Drawer
       screenOptions={{
@@ -23,26 +30,39 @@ export default function TabLayout() {
         // You can customize the drawer style and header here
       }}
       drawerContent={props => {
-        // Sobrescreve labels do menu para português
-        const newProps = {
-          ...props,
-          state: {
-            ...props.state,
-            routes: props.state.routes.map(route => {
-              if (route.name === 'favorites') {
-                return { ...route, name: 'Favoritos' };
-              }
-              if (route.name === 'profile') {
-                return { ...route, name: 'Perfil' };
-              }
-              return route;
-            })
-          }
-        };
+        // Renderiza manualmente os itens do Drawer para garantir apenas labels em português
+        const { navigation, state } = props;
+        const screens = [
+          { key: 'index', label: 'Catálogo', icon: 'home' },
+          ...(user ? [
+            { key: 'favorites', label: 'Favoritos', icon: 'heart' },
+            { key: 'profile', label: 'Perfil', icon: 'user' },
+          ] : []),
+          { key: 'explore', label: 'Explorar', icon: 'search' },
+          { key: 'theme-settings', label: 'Tema', icon: 'moon' },
+        ];
         return (
           <DrawerContentScrollView {...props}>
             <DrawerUserHeader />
-            <DrawerItemList {...newProps} />
+            {screens.map(screen => (
+              <TouchableOpacity
+                key={screen.key}
+                onPress={() => navigation.navigate(screen.key)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  backgroundColor: state.routeNames[state.index] === screen.key ? 'rgba(0,138,68,0.08)' : 'transparent',
+                  borderRadius: 8,
+                  marginBottom: 2,
+                }}
+                accessibilityLabel={screen.label}
+              >
+                <Icon name={screen.icon} size={22} color={state.routeNames[state.index] === screen.key ? '#008A44' : '#888'} style={{ marginRight: 16 }} />
+                <>{screen.label}</>
+              </TouchableOpacity>
+            ))}
           </DrawerContentScrollView>
         );
       }}
@@ -55,29 +75,50 @@ export default function TabLayout() {
           headerRight: ({ tintColor }) =>
             user ? (
               <>
-              <TouchableOpacity
-                onPress={() => {
-                  // Dispara um evento customizado para abrir o modal do carrinho na tela de catálogo
-                  if (typeof window !== 'undefined' && window.dispatchEvent) {
-                    window.dispatchEvent(new CustomEvent('abrirCarrinho'));
-                  }
-                }}
-                style={{ marginRight: 8, padding: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)' }}
-                accessibilityLabel="Abrir carrinho"
-              >
-                <Icon name="shopping-cart" size={24} color={tintColor || '#008A44'} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push('/(tabs)/profile')}
-                style={{ marginRight: 16, padding: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)' }}
-                accessibilityLabel="Ir para o perfil"
-              >
-                <Icon name="user" size={24} color={tintColor || '#008A44'} />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    // Dispara um evento customizado para abrir o modal do carrinho na tela de catálogo
+                    if (typeof window !== 'undefined' && window.dispatchEvent) {
+                      window.dispatchEvent(new CustomEvent('abrirCarrinho'));
+                    }
+                  }}
+                  style={{ marginRight: 8, padding: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)' }}
+                  accessibilityLabel="Abrir carrinho"
+                >
+                  <Icon name="shopping-cart" size={24} color={tintColor || '#008A44'} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/profile')}
+                  style={{ marginRight: 16, padding: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)' }}
+                  accessibilityLabel="Ir para o perfil"
+                >
+                  <Icon name="user" size={24} color={tintColor || '#008A44'} />
+                </TouchableOpacity>
               </>
             ) : null,
         }}
       />
+      {/* Adiciona explicitamente as rotas de Favoritos e Perfil para garantir navegação */}
+      {user ? (
+        <>
+          <Drawer.Screen
+            name="favorites"
+            options={{
+              drawerLabel: 'Favoritos',
+              title: 'Favoritos',
+              headerTitle: 'Favoritos',
+            }}
+          />
+          <Drawer.Screen
+            name="profile"
+            options={{
+              drawerLabel: 'Perfil',
+              title: 'Perfil',
+              headerTitle: 'Perfil',
+            }}
+          />
+        </>
+      ) : null}
       <Drawer.Screen
         name="explore"
         options={{
@@ -94,26 +135,7 @@ export default function TabLayout() {
         }}
       />
       {/* Só mostra Favoritos e Perfil se autenticado */}
-      {user ? (
-        <>
-          <Drawer.Screen
-            name="favorites"
-            options={{
-              drawerLabel: () => <>{'Favoritos'}</>,
-              title: 'Favoritos',
-              headerTitle: 'Favoritos',
-            }}
-          />
-          <Drawer.Screen
-            name="profile"
-            options={{
-              drawerLabel: () => <>{'Perfil'}</>,
-              title: 'Perfil',
-              headerTitle: 'Perfil',
-            }}
-          />
-        </>
-      ) : null}
+      {/* As rotas de Favoritos e Perfil são automáticas pelo Expo Router, não declare manualmente aqui! */}
     </Drawer>
   );
 }

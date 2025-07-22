@@ -267,13 +267,6 @@ export default function ProductCatalogScreen() {
             <Text style={styles.title}>Perpi Shop</Text>
             {user && (
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TouchableOpacity
-                  onPress={() => router.push('/(tabs)/profile')}
-                  style={{ marginRight: 12, padding: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)' }}
-                  accessibilityLabel="Ir para o perfil"
-                >
-                  <Icon name="user" size={24} color="#fff" />
-                </TouchableOpacity>
                 <TouchableOpacity onPress={() => setCartVisible(true)} style={styles.cartIconBtn}>
                   <Icon name="shopping-cart" size={24} color="#fff" />
                   {cart.length > 0 && (
