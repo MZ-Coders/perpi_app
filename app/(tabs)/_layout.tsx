@@ -1,8 +1,11 @@
 
+
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Drawer } from 'expo-router/drawer';
+import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import React from 'react';
+import DrawerUserHeader from '../components/DrawerUserHeader';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -13,6 +16,12 @@ export default function TabLayout() {
         headerShown: true,
         // You can customize the drawer style and header here
       }}
+      drawerContent={props => (
+        <DrawerContentScrollView {...props}>
+          <DrawerUserHeader />
+          <DrawerItemList {...props} />
+        </DrawerContentScrollView>
+      )}
     >
       <Drawer.Screen
         name="index"

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CategoryFilter from '../components/CategoryFilter';
 
@@ -36,6 +37,13 @@ export default function ProductCatalogScreen() {
     fetchCategories();
     fetchUserAndFavorites();
   }, []);
+
+  // Refresh favorites and userId when page is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserAndFavorites();
+    }, [])
+  );
 
   async function fetchUserAndFavorites() {
     const { data: { user } } = await supabase.auth.getUser();
