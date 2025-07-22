@@ -4,13 +4,17 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { Drawer } from 'expo-router/drawer';
+import { useRouter } from 'expo-router';
 import React from 'react';
+import { TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import DrawerUserHeader from '../components/DrawerUserHeader';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const user = useAuthUser();
+  const router = useRouter();
   return (
     <Drawer
       screenOptions={{
@@ -46,9 +50,32 @@ export default function TabLayout() {
       <Drawer.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Catálogo',
           drawerLabel: 'Catálogo',
-          // Optionally add an icon here
+          headerRight: ({ tintColor }) =>
+            user ? (
+              <>
+              <TouchableOpacity
+                onPress={() => {
+                  // Dispara um evento customizado para abrir o modal do carrinho na tela de catálogo
+                  if (typeof window !== 'undefined' && window.dispatchEvent) {
+                    window.dispatchEvent(new CustomEvent('abrirCarrinho'));
+                  }
+                }}
+                style={{ marginRight: 8, padding: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)' }}
+                accessibilityLabel="Abrir carrinho"
+              >
+                <Icon name="shopping-cart" size={24} color={tintColor || '#008A44'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/profile')}
+                style={{ marginRight: 16, padding: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.08)' }}
+                accessibilityLabel="Ir para o perfil"
+              >
+                <Icon name="user" size={24} color={tintColor || '#008A44'} />
+              </TouchableOpacity>
+              </>
+            ) : null,
         }}
       />
       <Drawer.Screen

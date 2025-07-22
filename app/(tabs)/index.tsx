@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
@@ -22,6 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function ProductCatalogScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -35,14 +37,12 @@ export default function ProductCatalogScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const user = useAuthUser();
 
-
   useEffect(() => {
     fetchProducts();
     fetchCategories();
     fetchUserAndFavorites();
   }, []);
 
-  // Refresh favorites and userId when page is focused
   useFocusEffect(
     useCallback(() => {
       fetchUserAndFavorites();
@@ -266,15 +266,23 @@ export default function ProductCatalogScreen() {
           <View style={styles.headerTop}>
             <Text style={styles.title}>Perpi Shop</Text>
             {user && (
-              <TouchableOpacity onPress={() => setCartVisible(true)} style={styles.cartIconBtn}>
-                <Icon name="shopping-cart" size={24} color="#fff" />
-                {cart.length > 0 && (
-                  <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cart.length}</Text></View>
-                )}
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/profile')}
+                  style={{ marginRight: 12, padding: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)' }}
+                  accessibilityLabel="Ir para o perfil"
+                >
+                  <Icon name="user" size={24} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setCartVisible(true)} style={styles.cartIconBtn}>
+                  <Icon name="shopping-cart" size={24} color="#fff" />
+                  {cart.length > 0 && (
+                    <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cart.length}</Text></View>
+                  )}
+                </TouchableOpacity>
+              </View>
             )}
           </View>
-          
           <View style={styles.searchContainer}>
             <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
             <TextInput
