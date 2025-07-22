@@ -10,7 +10,7 @@ export default function ProductCatalogScreen() {
   const [products, setProducts] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [filtered, setFiltered] = useState<any[]>([]);
-  const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
+  const [viewType, setViewType] = useState<'grid' | 'list'>('list');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
