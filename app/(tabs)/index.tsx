@@ -150,30 +150,35 @@ export default function ProductCatalogScreen() {
             <Image source={{ uri: item.image_url }} style={styles.image} />
           </SharedElement>
         )}
+        {/* Favorito absoluto no topo direito */}
+        <TouchableOpacity
+          style={styles.favoriteIconAbs}
+          onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
+        >
+          {isFav ? (
+            <MCIcon name="heart" size={22} color="#FF7A00" />
+          ) : (
+            <Icon name="heart" size={22} color="#BDBDBD" />
+          )}
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={styles.name}>{item.name}</Text>
-            <TouchableOpacity onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}>
-              {isFav ? (
-                <MCIcon name="heart" size={22} color="#FF7A00" />
-              ) : (
-                <Icon name="heart" size={22} color="#E0E0E0" />
-              )}
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.price}>MZN {item.price}</Text>
           <TouchableOpacity
-            style={[styles.cartBtn, inCart && styles.cartBtnInCart]}
+            style={[
+              styles.cartBtn,
+              inCart ? styles.cartBtnInCart : styles.cartBtnInactive
+            ]}
             onPress={e => {
               e.stopPropagation();
               handleAddToCart(item);
             }}
           >
-            <Text style={styles.cartBtnText}>
-              {inCart ? `No carrinho${cartItem && cartItem.qty > 1 ? ` (${cartItem.qty})` : ''}` : 'Adicionar ao carrinho'}
-            </Text>
-            {!inCart && <Icon name="shopping-cart" size={18} color="#fff" style={{ marginLeft: 6 }} />}
-            {inCart && <Text style={styles.inCartIcon}>✔️</Text>}
+            {inCart ? (
+              <MCIcon name="cart" size={22} color="#FF7A00" />
+            ) : (
+              <MCIcon name="cart-outline" size={22} color="#BDBDBD" />
+            )}
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -314,14 +319,29 @@ const styles = StyleSheet.create({
   toggleIconBtnActive: { backgroundColor: '#008A44' },
   toggleIcon: { fontSize: 22, color: '#008A44' },
   toggleIconActive: { color: '#fff' },
-  card: { flex: 1, margin: 10, backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2 },
-  listItem: { flexDirection: 'row', marginVertical: 10, backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2 },
+  card: { flex: 1, margin: 10, backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, position: 'relative' },
+  listItem: { flexDirection: 'row', marginVertical: 10, backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, position: 'relative' },
+  favoriteIconAbs: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 10,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 4,
+    elevation: 2,
+  },
   image: { width: 80, height: 80, borderRadius: 12, marginBottom: 12, backgroundColor: '#FDFDFB' },
   name: { fontWeight: 'bold', fontSize: 15, marginBottom: 2, color: '#1A1A1A', fontFamily: 'DM Sans' },
   price: { color: '#008A44', fontWeight: 'bold', fontSize: 16, marginBottom: 2 },
   priceCart: { color: '#008A44', fontWeight: 'bold', fontSize: 15, marginBottom: 2 },
   cartBtn: { marginTop: 8, backgroundColor: '#FF7A00', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 16, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', elevation: 1 },
   cartBtnInCart: { backgroundColor: '#008A44' },
+  cartBtnInactive: {
+    backgroundColor: '#F3F3F3',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
   cartBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   inCartIcon: { marginLeft: 6, fontSize: 16 },
   cartModalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.12)', justifyContent: 'center', alignItems: 'center' },
@@ -343,5 +363,6 @@ const styles = StyleSheet.create({
   closeCartBtn: { marginTop: 18, backgroundColor: '#008A44', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   closeCartBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   emptyText: { textAlign: 'center', marginVertical: 24, color: '#5C5C5C', fontSize: 16 },
+  // favoriteIconAbsInactive: removed, not needed for favorite button anymore
   // ...estilos de categoria agora estão em components/CategoryFilter.tsx
 });
