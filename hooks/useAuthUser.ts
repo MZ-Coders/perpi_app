@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { useEffect, useState } from 'react';
 
 const supabaseUrl = 'https://venpdlamvxpqnhqtkgrr.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbnBkbGFtdnhwcW5ocXRrZ3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4MzIxMjEsImV4cCI6MjA2ODQwODEyMX0.HSG7bLA6fFJxXjV4dakKYlNntvFvpiIBP9TFqmZ1HSE';

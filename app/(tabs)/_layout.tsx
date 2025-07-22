@@ -5,8 +5,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
-import DrawerUserHeader from '../components/DrawerUserHeader';
 import { useAuthUser } from '../../hooks/useAuthUser';
+import DrawerUserHeader from '../components/DrawerUserHeader';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -18,12 +18,30 @@ export default function TabLayout() {
         headerShown: true,
         // You can customize the drawer style and header here
       }}
-      drawerContent={props => (
-        <DrawerContentScrollView {...props}>
-          <DrawerUserHeader />
-          <DrawerItemList {...props} />
-        </DrawerContentScrollView>
-      )}
+      drawerContent={props => {
+        // Sobrescreve labels do menu para português
+        const newProps = {
+          ...props,
+          state: {
+            ...props.state,
+            routes: props.state.routes.map(route => {
+              if (route.name === 'favorites') {
+                return { ...route, name: 'Favoritos' };
+              }
+              if (route.name === 'profile') {
+                return { ...route, name: 'Perfil' };
+              }
+              return route;
+            })
+          }
+        };
+        return (
+          <DrawerContentScrollView {...props}>
+            <DrawerUserHeader />
+            <DrawerItemList {...newProps} />
+          </DrawerContentScrollView>
+        );
+      }}
     >
       <Drawer.Screen
         name="index"
@@ -40,22 +58,31 @@ export default function TabLayout() {
           drawerLabel: 'Explorar',
         }}
       />
-      {/* Só mostra Favoritos e Perfil se autenticado */}
+      {/* Opção de tema sempre visível */}
+      <Drawer.Screen
+        name="theme-settings"
+        options={{
+          title: 'Tema',
+          drawerLabel: 'Tema',
+        }}
+      />
       {/* Só mostra Favoritos e Perfil se autenticado */}
       {user ? (
         <>
           <Drawer.Screen
             name="favorites"
             options={{
+              drawerLabel: () => <>{'Favoritos'}</>,
               title: 'Favoritos',
-              drawerLabel: 'Favoritos',
+              headerTitle: 'Favoritos',
             }}
           />
           <Drawer.Screen
             name="profile"
             options={{
+              drawerLabel: () => <>{'Perfil'}</>,
               title: 'Perfil',
-              drawerLabel: 'Perfil',
+              headerTitle: 'Perfil',
             }}
           />
         </>

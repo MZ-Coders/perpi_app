@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
-import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useAuthUser } from '../../hooks/useAuthUser';
 import { FlatList, Image, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
 
 let SharedElement: any = null;

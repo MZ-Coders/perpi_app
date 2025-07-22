@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
+import { FlatList, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
