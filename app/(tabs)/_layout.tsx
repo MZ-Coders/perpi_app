@@ -7,7 +7,9 @@ import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
-import { Text, TouchableOpacity } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import DrawerUserHeader from '../components/DrawerUserHeader';
@@ -19,6 +21,32 @@ export default function TabLayout() {
   // Só renderiza após checar o estado do usuário (undefined = carregando)
   const [checked, setChecked] = React.useState(false);
   const [headerRefresh, setHeaderRefresh] = React.useState(0);
+  const [cartCount, setCartCount] = React.useState(0);
+
+  // Atualiza a quantidade de itens do carrinho sempre que a tela recebe foco
+  // Atualiza badge ao receber foco ou evento customizado
+  React.useEffect(() => {
+    const updateCartCount = async () => {
+      const data = await AsyncStorage.getItem('cart');
+      if (data) {
+        try {
+          const arr = JSON.parse(data);
+          setCartCount(Array.isArray(arr) ? arr.length : 0);
+        } catch {
+          setCartCount(0);
+        }
+      } else {
+        setCartCount(0);
+      }
+    };
+    updateCartCount();
+    // Escuta evento customizado disparado em cart.tsx
+    const handler = () => updateCartCount();
+    window.addEventListener('cartUpdated', handler);
+    return () => {
+      window.removeEventListener('cartUpdated', handler);
+    };
+  }, [user]);
   React.useEffect(() => {
     setChecked(true);
   }, [user]);
@@ -98,15 +126,27 @@ export default function TabLayout() {
             user ? (
               <>
                 <TouchableOpacity
-                  onPress={() => {
-                    if (typeof window !== 'undefined' && window.dispatchEvent) {
-                      window.dispatchEvent(new CustomEvent('abrirCarrinho'));
-                    }
-                  }}
-                  style={{ marginRight: 8, padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)' }}
+                  onPress={() => router.push('/cart')}
+                  style={{ marginRight: 8, padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)', position: 'relative' }}
                   accessibilityLabel="Abrir carrinho"
                 >
                   <Icon name="shopping-cart" size={24} color={'#fff'} />
+                  {cartCount > 0 && (
+                    <View style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -4,
+                      backgroundColor: '#FF7A00',
+                      borderRadius: 10,
+                      minWidth: 20,
+                      height: 20,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      paddingHorizontal: 4,
+                    }}>
+                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12, textAlign: 'center' }}>{cartCount}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => router.push('/(tabs)/profile')}

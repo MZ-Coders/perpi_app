@@ -1,4 +1,12 @@
-export const options = { title: 'Detalhes do Produto' };
+export const options = {
+  title: 'Detalhes do Produto',
+  headerTransparent: true,
+  headerTintColor: '#fff',
+  headerTitleStyle: { color: '#fff', fontWeight: 'bold' },
+  headerStyle: { backgroundColor: 'transparent' },
+  headerShadowVisible: false
+};
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -17,7 +25,20 @@ export default function ProductDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [imageLoading, setImageLoading] = useState(true);
-  
+  // Local cart state
+  const [cart, setCart] = useState<any[]>([]);
+  // Carrega carrinho do AsyncStorage ao montar
+  React.useEffect(() => {
+    AsyncStorage.getItem('cart').then(data => {
+      if (data) {
+        try {
+          setCart(JSON.parse(data));
+        } catch {}
+      }
+    });
+  }, []);
+  const [added, setAdded] = useState(false);
+
   // Extrair e converter parâmetros para os tipos corretos
   const name = params.name ? String(params.name) : '';
   const price = params.price ? Number(params.price) : 0;
@@ -25,15 +46,43 @@ export default function ProductDetailScreen() {
   const sharedId = params.sharedId ? String(params.sharedId) : '';
   const description = params.description ? String(params.description) : '';
   const stock_quantity = params.stock_quantity ? Number(params.stock_quantity) : 0;
-  const is_active = params.is_active === 'true' || params.is_active === true;
+  let is_active = false;
+  if (typeof params.is_active === 'string') {
+    is_active = params.is_active === 'true';
+  } else if (typeof params.is_active === 'boolean') {
+    is_active = params.is_active;
+  } else if (Array.isArray(params.is_active)) {
+    is_active = params.is_active[0] === 'true';
+  }
   const category_id = params.category_id ? String(params.category_id) : '';
   const category_name = params.category_name ? String(params.category_name) : '';
 
+  // Adiciona ao carrinho offline
+  function handleAddToCart() {
+    if (stock_quantity <= 0) return;
+    let newCart;
+    const exists = cart.find(item => item.id === params.id);
+    if (exists) {
+      newCart = cart.map(item => item.id === params.id ? { ...item, quantity: item.quantity + 1 } : item);
+    } else {
+      newCart = [...cart, { id: params.id, name, price, image_url, quantity: 1 }];
+    }
+    setCart(newCart);
+    AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200);
+  }
+
   return (
     <View style={styles.mainContainer}>
-      <StatusBar style="dark" />
-
-      
+      <StatusBar style="light" translucent />
+      {/* Botão de voltar personalizado */}
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
+        <Icon name="arrow-left" size={24} color="#fff" />
+      </TouchableOpacity>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         <View style={styles.imageContainer}>
           {imageLoading && (
@@ -41,15 +90,20 @@ export default function ProductDetailScreen() {
               <ActivityIndicator size="large" color="#008A44" />
             </View>
           )}
-          
           {Platform.OS === 'web' || !SharedElement ? (
-            <Image 
-              source={{ uri: image_url }}
-              style={styles.image} 
-              resizeMode="cover"
-              onLoadStart={() => setImageLoading(true)}
-              onLoadEnd={() => setImageLoading(false)}
-            />
+            <>
+              <Image 
+                source={{ uri: image_url }}
+                style={styles.image} 
+                resizeMode="cover"
+                onLoadStart={() => setImageLoading(true)}
+                onLoadEnd={() => setImageLoading(false)}
+              />
+              <LinearGradient
+                colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.3)', 'transparent']}
+                style={styles.imageGradient}
+              />
+            </>
           ) : (
             <SharedElement id={sharedId} style={styles.image}>
               <Image 
@@ -59,10 +113,13 @@ export default function ProductDetailScreen() {
                 onLoadStart={() => setImageLoading(true)}
                 onLoadEnd={() => setImageLoading(false)}
               />
+              <LinearGradient
+                colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.3)', 'transparent']}
+                style={styles.imageGradient}
+              />
             </SharedElement>
           )}
         </View>
-        
         <View style={styles.infoContainer}>
           <View style={styles.headerInfo}>
             <View style={styles.nameContainer}>
@@ -75,9 +132,7 @@ export default function ProductDetailScreen() {
             </View>
             <Text style={styles.price}>MZN {price.toFixed(2)}</Text>
           </View>
-          
           <View style={styles.divider} />
-          
           <View style={styles.descriptionContainer}>
             <View style={styles.sectionTitleContainer}>
               <Icon name="file-text" size={18} color="#008A44" />
@@ -87,15 +142,12 @@ export default function ProductDetailScreen() {
               {description.trim() ? description : 'Sem descrição disponível para este produto.'}
             </Text>
           </View>
-          
           <View style={styles.divider} />
-          
           <View style={styles.detailsContainer}>
             <View style={styles.sectionTitleContainer}>
               <Icon name="info" size={18} color="#008A44" />
               <Text style={styles.sectionTitle}>Informações do Produto</Text>
             </View>
-            
             <View style={styles.detailRow}>
               <View style={styles.detailIconContainer}>
                 <Icon name="tag" size={18} color="#008A44" />
@@ -103,7 +155,6 @@ export default function ProductDetailScreen() {
               <Text style={styles.detailLabel}>Categoria:</Text>
               <Text style={styles.detailValue}>{category_name || 'N/A'}</Text>
             </View>
-            
             <View style={styles.detailRow}>
               <View style={styles.detailIconContainer}>
                 <Icon name="package" size={18} color="#008A44" />
@@ -111,7 +162,6 @@ export default function ProductDetailScreen() {
               <Text style={styles.detailLabel}>Estoque:</Text>
               <Text style={styles.detailValue}>{stock_quantity}</Text>
             </View>
-            
             <View style={styles.detailRow}>
               <View style={styles.detailIconContainer}>
                 <Icon name="check-circle" size={18} color="#008A44" />
@@ -122,10 +172,10 @@ export default function ProductDetailScreen() {
               </Text>
             </View>
           </View>
-          
           <TouchableOpacity 
             style={[styles.addToCartButton, stock_quantity <= 0 && styles.disabledButton]}
             disabled={stock_quantity <= 0}
+            onPress={handleAddToCart}
           >
             <LinearGradient
               colors={stock_quantity > 0 ? ['#FF7A00', '#FF9A40'] : ['#CCCCCC', '#AAAAAA']}
@@ -135,7 +185,7 @@ export default function ProductDetailScreen() {
             >
               <Icon name="shopping-cart" size={20} color="#fff" style={{marginRight: 8}} />
               <Text style={styles.addToCartText}>
-                {stock_quantity > 0 ? 'Adicionar ao Carrinho' : 'Produto Esgotado'}
+                {stock_quantity > 0 ? (added ? 'Adicionado!' : 'Adicionar ao Carrinho') : 'Produto Esgotado'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -150,6 +200,7 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+    position: 'relative',
   },
   headerGradient: {
     paddingTop: Platform.OS === 'ios' ? 50 : 45,
@@ -181,11 +232,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   container: {
     padding: 0,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: 'transparent',
     paddingBottom: 30,
   },
   loadingContainer: {
@@ -201,34 +257,39 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    height: 350,
-    backgroundColor: '#fff',
+    height: 400,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
     position: 'relative',
+    marginTop: -50, // Compensar o espaço do header transparente
   },
   image: {
     width: '100%',
-    height: 350,
+    height: 400,
     backgroundColor: '#f5f5f5',
+  },
+  imageGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    zIndex: 1,
   },
   infoContainer: {
     padding: 20,
     backgroundColor: '#F8F9FA',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: -30,
+    marginTop: -50,
     paddingTop: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 2,
   },
   headerInfo: {
     flexDirection: 'row',

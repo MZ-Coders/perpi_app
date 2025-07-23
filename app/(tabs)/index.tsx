@@ -1,23 +1,20 @@
-import { useNavigation } from '@react-navigation/native';
+// Favoritos
+type Favorite = { id: number; product_id: number };
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuthUser } from '../../hooks/useAuthUser';
-import { supabase } from '../../lib/supabaseClient';
 import CategoryFilter from '../components/CategoryFilter';
 
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
-
-// Favoritos
-type Favorite = { id: number; product_id: number };
-
-
 export default function ProductCatalogScreen() {
   const router = useRouter();
   const navigation = useNavigation();
@@ -28,119 +25,110 @@ export default function ProductCatalogScreen() {
   const [filtered, setFiltered] = useState<any[]>([]);
   const [viewType, setViewType] = useState<'grid' | 'list'>('list');
   const [loading, setLoading] = useState(false);
-  const [cart, setCart] = useState<any[]>([]);
-  const [cartVisible, setCartVisible] = useState(false);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [cart, setCart] = useState<any[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const user = useAuthUser();
+  // Adiciona ou remove produto do carrinho
+  function handleToggleCart(product: any) {
+    setCart(prev => {
+      const exists = prev.find(p => p.id === product.id);
+      if (exists) {
+        return prev.filter(p => p.id !== product.id);
+      } else {
+        // Garante que o produto tenha quantity: 1 ao adicionar
+        return [...prev, { ...product, quantity: 1 }];
+      }
+    });
+  }
 
-  useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-    fetchUserAndFavorites();
-  }, []);
+  // Persiste o carrinho no AsyncStorage sempre que mudar
+  React.useEffect(() => {
+    AsyncStorage.setItem('cart', JSON.stringify(cart));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('cartUpdated'));
+    }
+  }, [cart]);
 
+  // Atualiza o carrinho sempre que a tela recebe foco
   useFocusEffect(
-    useCallback(() => {
-      fetchUserAndFavorites();
+    React.useCallback(() => {
+      AsyncStorage.getItem('cart').then(data => {
+        if (data) {
+          try {
+            setCart(JSON.parse(data));
+          } catch {}
+        } else {
+          setCart([]);
+        }
+      });
     }, [])
   );
 
-  async function fetchUserAndFavorites() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setUserId(user.id);
-      fetchFavorites(user.id);
-    }
-  }
-
-  async function fetchFavorites(uid: string) {
-    const { data, error } = await supabase
-      .from('favorites')
-      .select('id, product_id')
-      .eq('user_id', uid);
-    if (!error && data) setFavorites(data);
-  }
-
-  async function handleToggleFavorite(productId: number) {
-    if (!userId) return;
-    const isFav = favorites.some(f => f.product_id === productId);
-    if (isFav) {
-      // Remove
-      const fav = favorites.find(f => f.product_id === productId);
-      if (fav) {
-        await supabase.from('favorites').delete().eq('id', fav.id);
-        setFavorites(favorites.filter(f => f.product_id !== productId));
+  // Adiciona ou remove favorito
+  function handleToggleFavorite(productId: number) {
+    setFavorites(prev => {
+      const exists = prev.find(f => f.product_id === productId);
+      if (exists) {
+        return prev.filter(f => f.product_id !== productId);
+      } else {
+        return [...prev, { id: Date.now(), product_id: productId }];
       }
-    } else {
-      // Add
-      const { data, error } = await supabase.from('favorites').insert({ product_id: productId, user_id: userId }).select().single();
-      if (!error && data) setFavorites([...favorites, data]);
-    }
+    });
   }
+  const user = useAuthUser();
 
-  useEffect(() => {
-    let filteredProducts = products;
+  // Busca produtos e categorias do Supabase
+  React.useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      try {
+        // Importa o cliente do Supabase
+        const { supabase } = await import('../../lib/supabaseClient');
+        // Busca categorias
+        const { data: catData, error: catError } = await supabase
+          .from('categories')
+          .select('*')
+          .order('name', { ascending: true });
+        if (catError) throw catError;
+        setCategories(catData || []);
+
+        // Busca produtos
+        const { data: prodData, error: prodError } = await supabase
+          .from('products')
+          .select('*')
+          .order('name', { ascending: true });
+        if (prodError) throw prodError;
+        setProducts(prodData || []);
+      } catch (err) {
+        console.error('Erro ao buscar dados do Supabase:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  // Filtra produtos por categoria e busca
+  React.useEffect(() => {
+    let filteredList = products;
     if (selectedCategory) {
-      filteredProducts = filteredProducts.filter((p: any) => p.category_id === selectedCategory);
+      filteredList = filteredList.filter(p => p.category_id === selectedCategory);
     }
-    if (search.length > 0) {
-      filteredProducts = filteredProducts.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase()));
+    if (search) {
+      filteredList = filteredList.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
+      );
     }
-    setFiltered(filteredProducts);
-  }, [search, products, selectedCategory]);
-
-  async function fetchProducts() {
-    setLoading(true);
-    // Inclui description no select
-    const { data, error } = await supabase.from('products').select('id, name, price, image_url, category_id, description, stock_quantity, is_active');
-    setLoading(false);
-    if (!error && data) setProducts(data);
-  }
-
-  async function fetchCategories() {
-    const { data, error } = await supabase.from('categories').select('id, name, img_url');
-    if (!error && data) setCategories(data);
-  }
-
-  function handleAddToCart(product: any) {
-    setCart(prev => {
-      const idx = prev.findIndex((p) => p.id === product.id);
-      if (idx !== -1) {
-        const updated = [...prev];
-        updated[idx].qty += 1;
-        return updated;
-      }
-      return [...prev, { ...product, qty: 1 }];
-    });
-  }
-
-  function handleRemoveFromCart(productId: any) {
-    setCart(prev => prev.filter((p) => p.id !== productId));
-  }
-
-  function handleChangeQty(productId: any, delta: number) {
-    setCart(prev => {
-      return prev.map((p) => {
-        if (p.id === productId) {
-          const newQty = p.qty + delta;
-          if (newQty <= 0) return null;
-          return { ...p, qty: newQty };
-        }
-        return p;
-      }).filter(Boolean);
-    });
-  }
+    setFiltered(filteredList);
+  }, [products, selectedCategory, search]);
 
   function renderProduct({ item }: { item: any }) {
-    const inCart = cart.some((p) => p.id === item.id);
-    const cartItem = cart.find((p) => p.id === item.id);
     const sharedId = `product-image-${item.id}`;
-    const isFav = favorites.some(f => f.product_id === item.id);
-    // Busca o nome da categoria pelo id
-    const categoryObj = categories.find((c: any) => c.id === item.category_id);
+    const isFav = Array.isArray(favorites) ? favorites.some((f: Favorite) => f.product_id === item.id) : false;
+    const inCart = Array.isArray(cart) ? cart.some((p: any) => p.id === item.id) : false;
+    const categoryObj = Array.isArray(categories) ? categories.find((c: any) => c.id === item.category_id) : null;
     const category_name = categoryObj ? categoryObj.name : '';
-    
     if (viewType === 'grid') {
       return (
         <TouchableOpacity
@@ -169,31 +157,22 @@ export default function ProductCatalogScreen() {
               </TouchableOpacity>
             )}
           </View>
-          
           <View style={styles.gridCardContent}>
             <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.gridPrice}>MZN {item.price}</Text>
-            
             {user && (
               <TouchableOpacity
                 style={[styles.gridCartBtn, inCart && styles.gridCartBtnInCart]}
-                onPress={e => {
-                  e.stopPropagation();
-                  handleAddToCart(item);
-                }}
+                onPress={() => handleToggleCart(item)}
               >
-                {inCart ? (
-                  <Icon name="check" size={16} color="#fff" />
-                ) : (
-                  <Icon name="plus" size={16} color="#fff" />
-                )}
+                <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
               </TouchableOpacity>
             )}
           </View>
         </TouchableOpacity>
       );
     }
-    
+    // List view rendering
     return (
       <TouchableOpacity
         style={styles.listItem}
@@ -209,7 +188,6 @@ export default function ProductCatalogScreen() {
             </SharedElement>
           )}
         </View>
-        
         <View style={styles.listContent}>
           <View style={styles.listHeader}>
             <Text style={styles.listName} numberOfLines={2}>{item.name}</Text>
@@ -226,31 +204,20 @@ export default function ProductCatalogScreen() {
               </TouchableOpacity>
             )}
           </View>
-          
           <Text style={styles.listPrice}>MZN {item.price}</Text>
-          
           {user && (
             <TouchableOpacity
               style={[styles.listCartBtn, inCart && styles.listCartBtnInCart]}
-              onPress={e => {
-                e.stopPropagation();
-                handleAddToCart(item);
-              }}
+              onPress={() => handleToggleCart(item)}
             >
-              <Text style={styles.listCartBtnText}>
-                {inCart ? `No carrinho${cartItem && cartItem.qty > 1 ? ` (${cartItem.qty})` : ''}` : 'Adicionar'}
-              </Text>
-              {!inCart && <Icon name="shopping-cart" size={16} color="#fff" style={{ marginLeft: 6 }} />}
-              {inCart && <Icon name="check" size={16} color="#fff" style={{ marginLeft: 6 }} />}
+              <Icon name={inCart ? 'check' : 'shopping-cart'} size={16} color="#fff" />
+              <Text style={styles.listCartBtnText}>{inCart ? 'No carrinho' : 'Adicionar ao carrinho'}</Text>
             </TouchableOpacity>
           )}
         </View>
       </TouchableOpacity>
     );
   }
-
-  // Calcula o total do carrinho
-  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
 
   return (
     <View style={styles.container}>
@@ -262,16 +229,6 @@ export default function ProductCatalogScreen() {
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
             <Text style={styles.title}>Perpi Shop</Text>
-            {user && (
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TouchableOpacity onPress={() => setCartVisible(true)} style={styles.cartIconBtn}>
-                  <Icon name="shopping-cart" size={24} color="#fff" />
-                  {cart.length > 0 && (
-                    <View style={styles.cartBadge}><Text style={styles.cartBadgeText}>{cart.length}</Text></View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
           <View style={styles.searchContainer}>
             <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
@@ -332,67 +289,12 @@ export default function ProductCatalogScreen() {
           contentContainerStyle={{ paddingBottom: 32 }}
           ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
           refreshing={loading}
-          onRefresh={fetchProducts}
+          onRefresh={() => {}}
           nestedScrollEnabled={true}
           scrollEnabled={false} // Desabilita o scroll do FlatList para usar apenas o ScrollView principal
           scrollToOverflowEnabled={true}
         />
       </ScrollView>
-
-      {/* Modal do carrinho */}
-      <Modal visible={cartVisible} animationType="slide" transparent>
-        <View style={styles.cartModalBg}>
-          <View style={styles.cartModal}>
-            <Text style={styles.cartModalTitle}>Carrinho</Text>
-            {cart.length === 0 ? (
-              <Text style={styles.emptyText}>Seu carrinho está vazio.</Text>
-            ) : (
-              <>
-                <FlatList
-                  data={cart}
-                  keyExtractor={item => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <View style={styles.cartItemRow}>
-                      <Image source={{ uri: item.image_url }} style={styles.cartItemImg} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.name}>{item.name}</Text>
-                        <Text style={styles.priceCart}>MZN {item.price}</Text>
-                        <View style={styles.qtyRow}>
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => handleChangeQty(item.id, -1)}>
-                            <Text style={styles.qtyBtnText}>-</Text>
-                          </TouchableOpacity>
-                          <Text style={styles.qtyText}>{item.qty}</Text>
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => handleChangeQty(item.id, 1)}>
-                            <Text style={styles.qtyBtnText}>+</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveFromCart(item.id)}>
-                            <Icon name="trash-2" size={18} style={styles.removeBtnIcon} />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-                  style={{ maxHeight: 250 }}
-                />
-                <View style={styles.cartTotalRow}>
-                  <Text style={styles.cartTotalLabel}>Total:</Text>
-                  <Text style={styles.cartTotalValue}>MZN {cartTotal.toFixed(2)}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.buyBtn}
-                  onPress={() => alert('Compra realizada!')}
-                  disabled={cart.length === 0}
-                >
-                  <Text style={styles.buyBtnText}>Comprar</Text>
-                </TouchableOpacity>
-              </>
-            )}
-            <TouchableOpacity style={styles.closeCartBtn} onPress={() => setCartVisible(false)}>
-              <Text style={styles.closeCartBtnText}>Fechar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -454,11 +356,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     paddingHorizontal: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
   },
   searchIcon: {
     marginRight: 12,
@@ -473,11 +371,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 16,
     marginBottom: 8,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0,0,0,0.05)',
   },
   controlsRow: {
     flexDirection: 'row',
@@ -487,6 +381,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#fff',
     marginBottom: 8,
+    boxShadow: '0px 1px 2px rgba(0,0,0,0.05)',
   },
   resultsText: {
     fontSize: 14,
@@ -516,11 +411,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     overflow: 'hidden',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
   },
   imageContainer: {
     position: 'relative',
@@ -562,7 +453,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-end',
-    elevation: 2,
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
   },
   gridCartBtnInCart: {
     backgroundColor: '#008A44',
@@ -576,11 +467,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
+    boxShadow: '0px 1px 3px rgba(0,0,0,0.08)',
   },
   listImageContainer: {
     marginRight: 16,
@@ -627,7 +514,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
-    elevation: 2,
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
   },
   listCartBtnInCart: {
     backgroundColor: '#008A44',

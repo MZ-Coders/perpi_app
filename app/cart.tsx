@@ -1,10 +1,8 @@
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { supabase } from '../lib/supabaseClient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 // import { useAuthUser } from '../hooks/useAuthUser';
 
 export default function CartScreen() {
@@ -32,6 +30,9 @@ export default function CartScreen() {
   function updateCart(newCart: any[]) {
     setCartItems(newCart);
     AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('cartUpdated'));
+    }
   }
 
   function handleRemoveItem(itemId: number) {
