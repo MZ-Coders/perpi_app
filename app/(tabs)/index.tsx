@@ -28,36 +28,61 @@ export default function ProductCatalogScreen() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [cart, setCart] = useState<any[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  // Adiciona ou remove produto do carrinho
+  // Adiciona ou remove produto do carrinho, com logging detalhado
   function handleToggleCart(product: any) {
+    console.log('[handleToggleCart] product:', product);
     setCart(prev => {
-      const exists = prev.find(p => p.id === product.id);
+      const productId = String(product.id);
+      const exists = prev.find(p => String(p.id) === productId);
+      console.log('[handleToggleCart] exists:', exists);
       if (exists) {
-        return prev.filter(p => p.id !== product.id);
+        const filtered = prev.filter(p => String(p.id) !== productId);
+        console.log('[handleToggleCart] Removendo do carrinho:', filtered);
+        return filtered;
       } else {
-        // Garante que o produto tenha quantity: 1 ao adicionar
-        return [...prev, { ...product, quantity: 1 }];
+        // Normaliza os campos do item para evitar duplicidade
+        const normalized = {
+          id: productId,
+          name: product.name,
+          price: product.price,
+          image_url: product.image_url,
+          quantity: 1
+        };
+        const newCart = [...prev, normalized];
+        console.log('[handleToggleCart] Adicionando ao carrinho:', newCart);
+        return newCart;
       }
     });
   }
 
-  // Persiste o carrinho no AsyncStorage sempre que mudar
+  // Persiste o carrinho no AsyncStorage sempre que mudar, com logging
   React.useEffect(() => {
-    AsyncStorage.setItem('cart', JSON.stringify(cart));
+    console.log('[useEffect cart] Persistindo carrinho:', cart);
+    AsyncStorage.setItem('cart', JSON.stringify(cart)).then(() => {
+      console.log('[useEffect cart] Carrinho salvo no AsyncStorage');
+    });
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('cartUpdated'));
+      console.log('[useEffect cart] Evento cartUpdated disparado');
     }
   }, [cart]);
 
-  // Atualiza o carrinho sempre que a tela recebe foco
+  // Atualiza o carrinho sempre que a tela recebe foco, com logging
   useFocusEffect(
     React.useCallback(() => {
       AsyncStorage.getItem('cart').then(data => {
+        console.log('[useFocusEffect] AsyncStorage.getItem cart:', data);
         if (data) {
           try {
-            setCart(JSON.parse(data));
-          } catch {}
+            const arr = JSON.parse(data);
+            console.log('[useFocusEffect] Carrinho lido do AsyncStorage:', arr);
+            setCart(arr);
+          } catch (e) {
+            console.log('[useFocusEffect] Erro ao parsear carrinho:', e);
+            setCart([]);
+          }
         } else {
+          console.log('[useFocusEffect] Carrinho vazio');
           setCart([]);
         }
       });
@@ -125,8 +150,8 @@ export default function ProductCatalogScreen() {
 
   function renderProduct({ item }: { item: any }) {
     const sharedId = `product-image-${item.id}`;
-    const isFav = Array.isArray(favorites) ? favorites.some((f: Favorite) => f.product_id === item.id) : false;
-    const inCart = Array.isArray(cart) ? cart.some((p: any) => p.id === item.id) : false;
+    const isFav = Array.isArray(favorites) ? favorites.some((f: Favorite) => String(f.product_id) === String(item.id)) : false;
+    const inCart = Array.isArray(cart) ? cart.some((p: any) => String(p.id) === String(item.id)) : false;
     const categoryObj = Array.isArray(categories) ? categories.find((c: any) => c.id === item.category_id) : null;
     const category_name = categoryObj ? categoryObj.name : '';
     if (viewType === 'grid') {
@@ -229,6 +254,7 @@ export default function ProductCatalogScreen() {
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
             <Text style={styles.title}>Perpi Shop</Text>
+            {/* Cart icon removed from catalog header. Cart icon is now only in layout header. */}
           </View>
           <View style={styles.searchContainer}>
             <Icon name="search" size={20} color="#999" style={styles.searchIcon} />

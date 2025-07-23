@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
@@ -19,24 +20,59 @@ let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
+// ...existing code...
 
 // Espera receber os dados do produto via params
 export default function ProductDetailScreen() {
+  // Centraliza leitura do carrinho e atualização de estados
+  async function syncCartState() {
+    const data = await AsyncStorage.getItem('cart');
+    console.log('[syncCartState] params:', params);
+    const paramId = String(params.id);
+    if (data) {
+      try {
+        const arr = JSON.parse(data);
+        console.log('[syncCartState] cart from storage:', arr);
+        setCart(arr);
+        setCartCount(Array.isArray(arr) ? arr.length : 0);
+        const inCart = arr.some((item: any) => String(item.id) === paramId);
+        setIsInCart(inCart);
+        console.log('[syncCartState] isInCart:', inCart);
+      } catch (e) {
+        console.log('[syncCartState] error parsing cart:', e);
+        setCart([]);
+        setCartCount(0);
+        setIsInCart(false);
+      }
+    } else {
+      console.log('[syncCartState] cart empty');
+      setCart([]);
+      setCartCount(0);
+      setIsInCart(false);
+    }
+  }
   const router = useRouter();
   const params = useLocalSearchParams();
   const [imageLoading, setImageLoading] = useState(true);
   // Local cart state
   const [cart, setCart] = useState<any[]>([]);
-  // Carrega carrinho do AsyncStorage ao montar
+  const [cartCount, setCartCount] = useState(0);
+  // Sincroniza carrinho ao focar a tela e escuta evento de atualização
   React.useEffect(() => {
-    AsyncStorage.getItem('cart').then(data => {
-      if (data) {
-        try {
-          setCart(JSON.parse(data));
-        } catch {}
-      }
-    });
+    syncCartState();
+    const handler = () => syncCartState();
+    window.addEventListener('cartUpdated', handler);
+    return () => {
+      window.removeEventListener('cartUpdated', handler);
+    };
   }, []);
+
+  // Sincroniza carrinho ao focar a tela de detalhes
+  useFocusEffect(
+    React.useCallback(() => {
+      syncCartState();
+    }, [params.id])
+  );
   const [added, setAdded] = useState(false);
 
   // Extrair e converter parâmetros para os tipos corretos
@@ -57,32 +93,126 @@ export default function ProductDetailScreen() {
   const category_id = params.category_id ? String(params.category_id) : '';
   const category_name = params.category_name ? String(params.category_name) : '';
 
-  // Adiciona ao carrinho offline
-  function handleAddToCart() {
-    if (stock_quantity <= 0) return;
-    let newCart;
-    const exists = cart.find(item => item.id === params.id);
-    if (exists) {
-      newCart = cart.map(item => item.id === params.id ? { ...item, quantity: item.quantity + 1 } : item);
-    } else {
-      newCart = [...cart, { id: params.id, name, price, image_url, quantity: 1 }];
+  // Estado para controlar se o botão está processando
+  const [processing, setProcessing] = useState(false);
+
+  // Adiciona ou remove do carrinho, sempre lendo do AsyncStorage
+  function handleAddOrRemoveCart() {
+    console.log('[handleAddOrRemoveCart] params:', params);
+    if (stock_quantity <= 0 || processing) {
+      console.log('[handleAddOrRemoveCart] blocked: stock_quantity <= 0 or processing');
+      return;
     }
-    setCart(newCart);
-    AsyncStorage.setItem('cart', JSON.stringify(newCart));
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1200);
+    setProcessing(true);
+    const normalized = {
+      id: String(params.id),
+      name,
+      price,
+      image_url,
+      quantity: 1
+    };
+    console.log('[handleAddOrRemoveCart] normalized:', normalized);
+    AsyncStorage.getItem('cart').then(stored => {
+      let currentCart: typeof normalized[] = [];
+      if (stored) {
+        try {
+          currentCart = JSON.parse(stored);
+        } catch (e) {
+          console.log('[handleAddOrRemoveCart] error parsing cart:', e);
+        }
+      }
+      console.log('[handleAddOrRemoveCart] currentCart:', currentCart);
+      // Normaliza comparação: id, name e price
+      const isSameProduct = (item: typeof normalized) => {
+        return String(item.id) === normalized.id || (item.name === normalized.name && item.price === normalized.price);
+      };
+      const exists = currentCart.find(isSameProduct);
+      let newCart: typeof normalized[];
+      if (!exists) {
+        // Adiciona apenas se não existe produto igual
+        newCart = [...currentCart.filter(item => !isSameProduct(item)), normalized];
+        console.log('[handleAddOrRemoveCart] Adicionando ao carrinho:', newCart);
+        AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
+          setAdded(true);
+          setProcessing(false);
+          syncCartState();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('cartUpdated'));
+          }
+          setTimeout(() => setAdded(false), 1200);
+        });
+      } else {
+        // Remove todos os produtos iguais
+        newCart = currentCart.filter(item => !isSameProduct(item));
+        console.log('[handleAddOrRemoveCart] Removendo do carrinho:', newCart);
+        AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
+          setAdded(false);
+          setProcessing(false);
+          syncCartState();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('cartUpdated'));
+          }
+        });
+      }
+    });
   }
+  // Estado para refletir se o item está no carrinho (sempre atualizado)
+  const [isInCart, setIsInCart] = useState(false);
+
+  // Atualiza isInCart sempre que cart ou params.id mudam
+  React.useEffect(() => {
+    AsyncStorage.getItem('cart').then(stored => {
+      let currentCart: any[] = [];
+      if (stored) {
+        try {
+          currentCart = JSON.parse(stored);
+        } catch (e) {
+          console.log('[useEffect cart] error parsing cart:', e);
+        }
+      }
+      const paramId = String(params.id);
+      const inCart = currentCart.some(item => String(item.id) === paramId);
+      setIsInCart(inCart);
+      console.log('[useEffect cart] isInCart:', inCart, 'params:', params);
+    });
+  }, [cart, params.id]);
+  // ...existing code...
 
   return (
     <View style={styles.mainContainer}>
       <StatusBar style="light" translucent />
-      {/* Botão de voltar personalizado */}
-      <TouchableOpacity 
-        style={styles.backButton}
-        onPress={() => router.back()}
-      >
-        <Icon name="arrow-left" size={24} color="#fff" />
-      </TouchableOpacity>
+      {/* Top bar: back button + cart icon */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', position: 'absolute', top: Platform.OS === 'ios' ? 50 : 45, left: 20, right: 20, zIndex: 10 }}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Icon name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push('/cart')}
+          style={{ marginRight: 0, padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)', position: 'relative' }}
+          accessibilityLabel="Abrir carrinho"
+        >
+          <Icon name="shopping-cart" size={24} color={'#fff'} />
+          {cartCount > 0 && (
+            <View style={{
+              position: 'absolute',
+              top: -4,
+              right: -4,
+              backgroundColor: '#FF7A00',
+              borderRadius: 10,
+              minWidth: 20,
+              height: 20,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 4,
+            }}>
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12, textAlign: 'center' }}>{cartCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         <View style={styles.imageContainer}>
           {imageLoading && (
@@ -134,48 +264,43 @@ export default function ProductDetailScreen() {
           </View>
           <View style={styles.divider} />
           <View style={styles.descriptionContainer}>
-            <View style={styles.sectionTitleContainer}>
-              <Icon name="file-text" size={18} color="#008A44" />
-              <Text style={styles.sectionTitle}>Descrição</Text>
-            </View>
-            <Text style={styles.description}>
-              {description.trim() ? description : 'Sem descrição disponível para este produto.'}
-            </Text>
+    <View style={styles.sectionTitleContainer}>
+      <Icon name="file-text" size={18} color="#008A44" />
+      <Text style={styles.sectionTitle}>Descrição</Text>
+    </View>
+    <Text style={styles.description}>{description}</Text>
+    <View style={styles.detailsContainer}>
+      <View style={styles.detailRow}>
+        <View style={styles.detailIconContainer}>
+          <Icon name="archive" size={18} color="#008A44" />
+        </View>
+        <Text style={styles.detailLabel}>Estoque:</Text>
+        <Text style={styles.detailValue}>{stock_quantity}</Text>
+      </View>
+      <View style={styles.detailRow}>
+        <View style={styles.detailIconContainer}>
+          <Icon name="check-circle" size={18} color="#008A44" />
+        </View>
+        <Text style={styles.detailLabel}>Status:</Text>
+        <Text style={[styles.detailValue, {color: is_active ? '#008A44' : '#FF3B30'}]}>
+          {is_active ? 'Ativo' : 'Inativo'}
+        </Text>
+      </View>
+      {category_name && (
+        <View style={styles.detailRow}>
+          <View style={styles.detailIconContainer}>
+            <Icon name="tag" size={18} color="#008A44" />
           </View>
-          <View style={styles.divider} />
-          <View style={styles.detailsContainer}>
-            <View style={styles.sectionTitleContainer}>
-              <Icon name="info" size={18} color="#008A44" />
-              <Text style={styles.sectionTitle}>Informações do Produto</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <View style={styles.detailIconContainer}>
-                <Icon name="tag" size={18} color="#008A44" />
-              </View>
-              <Text style={styles.detailLabel}>Categoria:</Text>
-              <Text style={styles.detailValue}>{category_name || 'N/A'}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <View style={styles.detailIconContainer}>
-                <Icon name="package" size={18} color="#008A44" />
-              </View>
-              <Text style={styles.detailLabel}>Estoque:</Text>
-              <Text style={styles.detailValue}>{stock_quantity}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <View style={styles.detailIconContainer}>
-                <Icon name="check-circle" size={18} color="#008A44" />
-              </View>
-              <Text style={styles.detailLabel}>Status:</Text>
-              <Text style={[styles.detailValue, {color: is_active ? '#008A44' : '#FF3B30'}]}>
-                {is_active ? 'Ativo' : 'Inativo'}
-              </Text>
-            </View>
+          <Text style={styles.detailLabel}>Categoria:</Text>
+          <Text style={styles.detailValue}>{category_name}</Text>
+        </View>
+      )}
+    </View>
           </View>
           <TouchableOpacity 
-            style={[styles.addToCartButton, stock_quantity <= 0 && styles.disabledButton]}
-            disabled={stock_quantity <= 0}
-            onPress={handleAddToCart}
+            style={[styles.addToCartButton, (stock_quantity <= 0 || processing || (isInCart && !cart.some(item => item.id === params.id))) && styles.disabledButton]}
+            disabled={stock_quantity <= 0 || processing}
+            onPress={handleAddOrRemoveCart}
           >
             <LinearGradient
               colors={stock_quantity > 0 ? ['#FF7A00', '#FF9A40'] : ['#CCCCCC', '#AAAAAA']}
@@ -185,7 +310,11 @@ export default function ProductDetailScreen() {
             >
               <Icon name="shopping-cart" size={20} color="#fff" style={{marginRight: 8}} />
               <Text style={styles.addToCartText}>
-                {stock_quantity > 0 ? (added ? 'Adicionado!' : 'Adicionar ao Carrinho') : 'Produto Esgotado'}
+                {stock_quantity <= 0
+                  ? 'Produto Esgotado'
+                  : isInCart
+                    ? 'Remover do Carrinho'
+                    : (added ? 'Adicionado!' : 'Adicionar ao Carrinho')}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
