@@ -27,25 +27,20 @@ export default function ProductDetailScreen() {
   // Centraliza leitura do carrinho e atualização de estados
   async function syncCartState() {
     const data = await AsyncStorage.getItem('cart');
-    console.log('[syncCartState] params:', params);
     const paramId = String(params.id);
     if (data) {
       try {
         const arr = JSON.parse(data);
-        console.log('[syncCartState] cart from storage:', arr);
         setCart(arr);
         setCartCount(Array.isArray(arr) ? arr.length : 0);
         const inCart = arr.some((item: any) => String(item.id) === paramId);
         setIsInCart(inCart);
-        console.log('[syncCartState] isInCart:', inCart);
       } catch (e) {
-        console.log('[syncCartState] error parsing cart:', e);
         setCart([]);
         setCartCount(0);
         setIsInCart(false);
       }
     } else {
-      console.log('[syncCartState] cart empty');
       setCart([]);
       setCartCount(0);
       setIsInCart(false);
@@ -98,9 +93,7 @@ export default function ProductDetailScreen() {
 
   // Adiciona ou remove do carrinho, sempre lendo do AsyncStorage
   function handleAddOrRemoveCart() {
-    console.log('[handleAddOrRemoveCart] params:', params);
     if (stock_quantity <= 0 || processing) {
-      console.log('[handleAddOrRemoveCart] blocked: stock_quantity <= 0 or processing');
       return;
     }
     setProcessing(true);
@@ -111,17 +104,13 @@ export default function ProductDetailScreen() {
       image_url,
       quantity: 1
     };
-    console.log('[handleAddOrRemoveCart] normalized:', normalized);
     AsyncStorage.getItem('cart').then(stored => {
       let currentCart: typeof normalized[] = [];
       if (stored) {
         try {
           currentCart = JSON.parse(stored);
-        } catch (e) {
-          console.log('[handleAddOrRemoveCart] error parsing cart:', e);
-        }
+        } catch (e) {}
       }
-      console.log('[handleAddOrRemoveCart] currentCart:', currentCart);
       // Normaliza comparação: id, name e price
       const isSameProduct = (item: typeof normalized) => {
         return String(item.id) === normalized.id || (item.name === normalized.name && item.price === normalized.price);
@@ -131,7 +120,6 @@ export default function ProductDetailScreen() {
       if (!exists) {
         // Adiciona apenas se não existe produto igual
         newCart = [...currentCart.filter(item => !isSameProduct(item)), normalized];
-        console.log('[handleAddOrRemoveCart] Adicionando ao carrinho:', newCart);
         AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
           setAdded(true);
           setProcessing(false);
@@ -144,7 +132,6 @@ export default function ProductDetailScreen() {
       } else {
         // Remove todos os produtos iguais
         newCart = currentCart.filter(item => !isSameProduct(item));
-        console.log('[handleAddOrRemoveCart] Removendo do carrinho:', newCart);
         AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
           setAdded(false);
           setProcessing(false);
@@ -173,7 +160,6 @@ export default function ProductDetailScreen() {
       const paramId = String(params.id);
       const inCart = currentCart.some(item => String(item.id) === paramId);
       setIsInCart(inCart);
-      console.log('[useEffect cart] isInCart:', inCart, 'params:', params);
     });
   }, [cart, params.id]);
   // ...existing code...

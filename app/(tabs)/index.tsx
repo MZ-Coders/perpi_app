@@ -30,14 +30,11 @@ export default function ProductCatalogScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   // Adiciona ou remove produto do carrinho, com logging detalhado
   function handleToggleCart(product: any) {
-    console.log('[handleToggleCart] product:', product);
     setCart(prev => {
       const productId = String(product.id);
       const exists = prev.find(p => String(p.id) === productId);
-      console.log('[handleToggleCart] exists:', exists);
       if (exists) {
         const filtered = prev.filter(p => String(p.id) !== productId);
-        console.log('[handleToggleCart] Removendo do carrinho:', filtered);
         return filtered;
       } else {
         // Normaliza os campos do item para evitar duplicidade
@@ -49,7 +46,6 @@ export default function ProductCatalogScreen() {
           quantity: 1
         };
         const newCart = [...prev, normalized];
-        console.log('[handleToggleCart] Adicionando ao carrinho:', newCart);
         return newCart;
       }
     });
@@ -57,13 +53,9 @@ export default function ProductCatalogScreen() {
 
   // Persiste o carrinho no AsyncStorage sempre que mudar, com logging
   React.useEffect(() => {
-    console.log('[useEffect cart] Persistindo carrinho:', cart);
-    AsyncStorage.setItem('cart', JSON.stringify(cart)).then(() => {
-      console.log('[useEffect cart] Carrinho salvo no AsyncStorage');
-    });
+    AsyncStorage.setItem('cart', JSON.stringify(cart));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('cartUpdated'));
-      console.log('[useEffect cart] Evento cartUpdated disparado');
     }
   }, [cart]);
 
@@ -71,18 +63,14 @@ export default function ProductCatalogScreen() {
   useFocusEffect(
     React.useCallback(() => {
       AsyncStorage.getItem('cart').then(data => {
-        console.log('[useFocusEffect] AsyncStorage.getItem cart:', data);
         if (data) {
           try {
             const arr = JSON.parse(data);
-            console.log('[useFocusEffect] Carrinho lido do AsyncStorage:', arr);
             setCart(arr);
           } catch (e) {
-            console.log('[useFocusEffect] Erro ao parsear carrinho:', e);
             setCart([]);
           }
         } else {
-          console.log('[useFocusEffect] Carrinho vazio');
           setCart([]);
         }
       });
