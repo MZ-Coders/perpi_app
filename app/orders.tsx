@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Image } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Image, ScrollView } from 'react-native';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthUser } from '../hooks/useAuthUser';
 
@@ -54,44 +54,154 @@ export default function OrdersScreen() {
     })();
   }, [USER_ID]);
 
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'entregue':
+      case 'delivered':
+        return styles.statusSuccess;
+      case 'em_preparacao':
+      case 'preparing':
+        return styles.statusWarning;
+      case 'cancelado':
+      case 'cancelled':
+        return styles.statusError;
+      default:
+        return styles.statusPrimary;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'entregue':
+      case 'delivered':
+        return 'Entregue';
+      case 'em_preparacao':
+      case 'preparing':
+        return 'Em Preparação';
+      case 'cancelado':
+      case 'cancelled':
+        return 'Cancelado';
+      case 'pendente':
+      case 'pending':
+        return 'Pendente';
+      default:
+        return status || 'Processando';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const renderOrderItem = ({ item }: { item: any }) => (
+    <View style={styles.orderCard}>
+      {/* Header do pedido */}
+      <View style={styles.orderHeader}>
+        <View style={styles.orderHeaderTop}>
+          <Text style={styles.orderId}>Pedido #{item.id}</Text>
+          <View style={[styles.statusBadge, getStatusColor(item.order_status)]}>
+            <Text style={styles.statusText}>{getStatusText(item.order_status)}</Text>
+          </View>
+        </View>
+        <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
+      </View>
+
+      {/* Informações do pedido */}
+      <View style={styles.orderInfo}>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Total:</Text>
+          <Text style={styles.totalAmount}>MZN {Number(item.total_amount).toFixed(2)}</Text>
+        </View>
+        
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Endereço:</Text>
+          <Text style={styles.infoValue} numberOfLines={2}>
+            {item.endereco_entrega}, {item.cidade_entrega}
+          </Text>
+        </View>
+      </View>
+
+      {/* Itens do pedido */}
+      {orderItems[item.id] && orderItems[item.id].length > 0 && (
+        <View style={styles.itemsSection}>
+          <Text style={styles.itemsTitle}>Itens do Pedido</Text>
+          <ScrollView style={styles.itemsList} nestedScrollEnabled>
+            {orderItems[item.id].map((orderItem: any, index: number) => (
+              <View key={`${orderItem.id}-${index}`} style={styles.orderItemRow}>
+                <View style={styles.itemImageContainer}>
+                  {orderItem.product?.image_url ? (
+                    <Image 
+                      source={{ uri: orderItem.product.image_url }} 
+                      style={styles.itemImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.itemImage, styles.imagePlaceholder]}>
+                      <Text style={styles.imagePlaceholderText}>📦</Text>
+                    </View>
+                  )}
+                </View>
+                
+                <View style={styles.itemDetails}>
+                  <Text style={styles.itemName} numberOfLines={2}>
+                    {orderItem.product?.name || 'Produto'}
+                  </Text>
+                  <View style={styles.itemMeta}>
+                    <Text style={styles.itemQuantity}>Qtd: {orderItem.quantity}</Text>
+                    <Text style={styles.itemPrice}>
+                      MZN {Number(orderItem.price_at_purchase).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Minhas Compras</Text>
+      {/* Header customizado */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Minhas Compras</Text>
+        <Text style={styles.headerSubtitle}>Histórico de pedidos</Text>
+      </View>
+
       {loading ? (
-        <Text>Carregando...</Text>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Carregando pedidos...</Text>
+        </View>
       ) : error ? (
-        <Text style={styles.error}>Erro: {error}</Text>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>❌ Erro ao carregar pedidos</Text>
+          <Text style={styles.errorDetail}>{error}</Text>
+        </View>
       ) : orders.length === 0 ? (
-        <Text style={styles.empty}>Você ainda não fez nenhuma compra.</Text>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>🛒</Text>
+          <Text style={styles.emptyTitle}>Nenhuma compra ainda</Text>
+          <Text style={styles.emptyMessage}>
+            Quando você fizer seu primeiro pedido, ele aparecerá aqui.
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={orders}
           keyExtractor={item => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.orderItem}>
-              <Text style={styles.orderId}>Pedido #{item.id}</Text>
-              <Text>Status: {item.order_status}</Text>
-              <Text>Total: MZN {item.total_amount}</Text>
-              <Text>Data: {item.created_at ? new Date(item.created_at).toLocaleString() : '-'}</Text>
-              <Text>Endereço: {item.endereco_entrega}, {item.cidade_entrega}</Text>
-              <Text>Coordenadas: {item.latitude_entrega}, {item.longitude_entrega}</Text>
-              {orderItems[item.id] && orderItems[item.id].length > 0 && (
-                <View style={{ marginTop: 10 }}>
-                  <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>Itens comprados:</Text>
-                  {orderItems[item.id].map((orderItem: any) => (
-                    <View key={orderItem.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, marginLeft: 8 }}>
-                      {orderItem.product?.image_url && (
-                        <View style={{ marginRight: 8 }}>
-                          <Image source={{ uri: orderItem.product.image_url }} style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: '#F3F3F3' }} />
-                        </View>
-                      )}
-                      <Text>- {orderItem.product?.name || 'Produto'} x{orderItem.quantity} (MZN {orderItem.price_at_purchase})</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
+          renderItem={renderOrderItem}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
     </View>
@@ -99,10 +209,262 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA', padding: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#008A44', marginBottom: 20, textAlign: 'center' },
-  error: { color: 'red', textAlign: 'center', marginVertical: 10 },
-  empty: { textAlign: 'center', marginVertical: 24, color: '#5C5C5C', fontSize: 16 },
-  orderItem: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginBottom: 16, elevation: 1 },
-  orderId: { fontWeight: 'bold', fontSize: 16, marginBottom: 4, color: '#008A44' },
+  // Layout principal
+  container: {
+    flex: 1,
+    backgroundColor: '#FDFDFB', // neutralLight
+  },
+  
+  // Header
+  header: {
+    backgroundColor: '#008A44', // brand-color-primary
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  headerTitle: {
+    fontSize: 32, // display-lg equivalent
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 15, // body-md
+    fontWeight: '400',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    opacity: 0.9,
+  },
+
+  // Lista
+  listContainer: {
+    padding: 16,
+    paddingBottom: 24,
+  },
+  separator: {
+    height: 12,
+  },
+
+  // Card do pedido
+  orderCard: {
+    backgroundColor: '#FFFFFF', // neutralSurface
+    borderRadius: 16, // radius-lg
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  // Header do pedido
+  orderHeader: {
+    marginBottom: 16,
+  },
+  orderHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  orderId: {
+    fontSize: 20, // title-lg
+    fontWeight: '600',
+    color: '#008A44', // brand-color-primary
+  },
+  orderDate: {
+    fontSize: 13, // caption-sm
+    fontWeight: '500',
+    color: '#5C5C5C', // neutralTextSecondary
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Status badge
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 9999, // radius-full
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 11, // caption-xs
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statusSuccess: {
+    backgroundColor: '#34C759',
+  },
+  statusWarning: {
+    backgroundColor: '#FFCC00',
+  },
+  statusError: {
+    backgroundColor: '#FF3B30',
+  },
+  statusPrimary: {
+    backgroundColor: '#008A44',
+  },
+
+  // Informações do pedido
+  orderInfo: {
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0', // neutralBorder
+    paddingTop: 16,
+    marginBottom: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  infoLabel: {
+    fontSize: 14, // body-sm
+    fontWeight: '500',
+    color: '#5C5C5C', // neutralTextSecondary
+    flex: 1,
+  },
+  infoValue: {
+    fontSize: 14, // body-sm
+    fontWeight: '400',
+    color: '#1A1A1A', // neutralTextPrimary
+    flex: 2,
+    textAlign: 'right',
+  },
+  totalAmount: {
+    fontSize: 18, // title-md
+    fontWeight: '700',
+    color: '#008A44', // brand-color-primary
+  },
+
+  // Seção de itens
+  itemsSection: {
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0', // neutralBorder
+    paddingTop: 16,
+  },
+  itemsTitle: {
+    fontSize: 16, // title-md
+    fontWeight: '600',
+    color: '#1A1A1A', // neutralTextPrimary
+    marginBottom: 12,
+  },
+  itemsList: {
+    maxHeight: 200,
+  },
+
+  // Item do pedido
+  orderItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F3F3',
+  },
+  itemImageContainer: {
+    marginRight: 12,
+  },
+  itemImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8, // radius-md
+    backgroundColor: '#F3F3F3',
+  },
+  imagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePlaceholderText: {
+    fontSize: 20,
+  },
+  itemDetails: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 14, // body-sm
+    fontWeight: '500',
+    color: '#1A1A1A', // neutralTextPrimary
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  itemMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemQuantity: {
+    fontSize: 12, // caption-sm
+    fontWeight: '500',
+    color: '#5C5C5C', // neutralTextSecondary
+  },
+  itemPrice: {
+    fontSize: 14, // body-sm
+    fontWeight: '600',
+    color: '#FF7A00', // brand-color-accent
+  },
+
+  // Estados de loading/error/empty
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 16, // body-lg
+    fontWeight: '400',
+    color: '#5C5C5C', // neutralTextSecondary
+    textAlign: 'center',
+  },
+  
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  errorText: {
+    fontSize: 18, // title-md
+    fontWeight: '600',
+    color: '#FF3B30', // error
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorDetail: {
+    fontSize: 14, // body-sm
+    fontWeight: '400',
+    color: '#5C5C5C', // neutralTextSecondary
+    textAlign: 'center',
+  },
+
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 24, // headline-md
+    fontWeight: '700',
+    color: '#1A1A1A', // neutralTextPrimary
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyMessage: {
+    fontSize: 16, // body-lg
+    fontWeight: '400',
+    color: '#5C5C5C', // neutralTextSecondary
+    textAlign: 'center',
+    lineHeight: 22,
+  },
 });
