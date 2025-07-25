@@ -65,6 +65,7 @@ export default function TabLayout() {
         const screens = [
           { key: 'index', label: 'Catálogo', icon: 'home' },
           ...(user ? [
+            { key: 'orders', label: 'Minhas Compras', icon: 'clipboard' },
             { key: 'favorites', label: 'Favoritos', icon: 'heart' },
             { key: 'profile', label: 'Perfil', icon: 'user' },
           ] : []),

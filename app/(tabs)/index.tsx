@@ -255,7 +255,7 @@ export default function ProductCatalogScreen() {
           <View style={styles.headerTop}>
             <Text style={styles.title}>Perpi Shop</Text>
             {user && (
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity onPress={() => router.push({ pathname: '/cart' })} style={styles.cartIconBtn}>
                   <Icon name="shopping-cart" size={24} color="#fff" />
                   {cart.length > 0 && (
@@ -263,6 +263,9 @@ export default function ProductCatalogScreen() {
                       <Text style={styles.cartBadgeText}>{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}</Text>
                     </View>
                   )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push({ pathname: '/orders' })} style={styles.cartIconBtn}>
+                  <MCIcon name="clipboard-list" size={24} color="#fff" />
                 </TouchableOpacity>
               </View>
             )}
