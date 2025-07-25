@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+console.log('[DEBUG] Arquivo login.tsx carregado');
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Text, TextInput, TouchableOpacity, useColorScheme, View, StyleSheet, Image, ScrollView, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,6 +14,15 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function LoginScreen({ navigation }) {
+  console.log('[DEBUG] Componente LoginScreen iniciado');
+  // DEBUG: loga o estado inicial do Supabase e do usuário
+  React.useEffect(() => {
+    console.log('[DEBUG] LoginScreen montado');
+    supabase.auth.getUser().then(({ data, error }) => {
+      console.log('[DEBUG] Estado inicial do usuário:', { data, error });
+    });
+  }, []);
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,6 +30,7 @@ export default function LoginScreen({ navigation }) {
   const colorScheme = useColorScheme();
 
   const handleLogin = async () => {
+    alert('[DEBUG] handleLogin chamado');
     setError('');
     setLoading(true);
     const { error, data } = await supabase.auth.signInWithPassword({
@@ -26,10 +38,14 @@ export default function LoginScreen({ navigation }) {
       password,
     });
     setLoading(false);
+    console.log('[DEBUG] Resultado do login:', { error, data });
     if (error) {
       setError(error.message);
+      console.log('[DEBUG] Erro de login:', error.message);
     } else {
-      navigation.navigate('UserProfile');
+      console.log('[DEBUG] Usuário autenticado:', data.user);
+      // Redireciona para o catálogo (index) após login
+      router.replace('/');
     }
   };
 

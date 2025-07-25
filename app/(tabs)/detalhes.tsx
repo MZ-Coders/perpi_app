@@ -1,18 +1,19 @@
-export const options = {
-  title: 'Detalhes do Produto',
-  headerTransparent: true,
-  headerTintColor: '#fff',
-  headerTitleStyle: { color: '#fff', fontWeight: 'bold' },
-  headerStyle: { backgroundColor: 'transparent' },
-  headerShadowVisible: false
-};
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Removendo as opções locais para usar as definidas no _layout.tsx
+// export const options = {
+//   title: 'Detalhes do Produto',
+//   headerTransparent: true,
+//   headerTintColor: '#fff',
+//   headerTitleStyle: { color: '#fff', fontWeight: 'bold' },
+//   headerStyle: { backgroundColor: 'transparent' },
+//   headerShadowVisible: false,
+//   headerLeft: () => null // Remove o botão padrão do drawer
+// };
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Feather';
 
 const { width } = Dimensions.get('window');
@@ -20,54 +21,24 @@ let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
-// ...existing code...
 
 // Espera receber os dados do produto via params
 export default function ProductDetailScreen() {
-  // Centraliza leitura do carrinho e atualização de estados
-  async function syncCartState() {
-    const data = await AsyncStorage.getItem('cart');
-    const paramId = String(params.id);
-    if (data) {
-      try {
-        const arr = JSON.parse(data);
-        setCart(arr);
-        setCartCount(Array.isArray(arr) ? arr.length : 0);
-        const inCart = arr.some((item: any) => String(item.id) === paramId);
-        setIsInCart(inCart);
-      } catch (e) {
-        setCart([]);
-        setCartCount(0);
-        setIsInCart(false);
-      }
-    } else {
-      setCart([]);
-      setCartCount(0);
-      setIsInCart(false);
-    }
-  }
   const router = useRouter();
   const params = useLocalSearchParams();
   const [imageLoading, setImageLoading] = useState(true);
   // Local cart state
   const [cart, setCart] = useState<any[]>([]);
-  const [cartCount, setCartCount] = useState(0);
-  // Sincroniza carrinho ao focar a tela e escuta evento de atualização
+  // Carrega carrinho do AsyncStorage ao montar
   React.useEffect(() => {
-    syncCartState();
-    const handler = () => syncCartState();
-    window.addEventListener('cartUpdated', handler);
-    return () => {
-      window.removeEventListener('cartUpdated', handler);
-    };
+    AsyncStorage.getItem('cart').then(data => {
+      if (data) {
+        try {
+          setCart(JSON.parse(data));
+        } catch {}
+      }
+    });
   }, []);
-
-  // Sincroniza carrinho ao focar a tela de detalhes
-  useFocusEffect(
-    React.useCallback(() => {
-      syncCartState();
-    }, [params.id])
-  );
   const [added, setAdded] = useState(false);
 
   // Extrair e converter parâmetros para os tipos corretos
@@ -88,118 +59,37 @@ export default function ProductDetailScreen() {
   const category_id = params.category_id ? String(params.category_id) : '';
   const category_name = params.category_name ? String(params.category_name) : '';
 
-  // Estado para controlar se o botão está processando
-  const [processing, setProcessing] = useState(false);
-
-  // Adiciona ou remove do carrinho, sempre lendo do AsyncStorage
-  function handleAddOrRemoveCart() {
-    if (stock_quantity <= 0 || processing) {
-      return;
+  // Adiciona ao carrinho offline
+  function handleAddToCart() {
+    if (stock_quantity <= 0) return;
+    let newCart;
+    const exists = cart.find(item => item.id === params.id);
+    if (exists) {
+      newCart = cart.map(item => item.id === params.id ? { ...item, quantity: item.quantity + 1 } : item);
+    } else {
+      newCart = [...cart, { id: params.id, name, price, image_url, quantity: 1 }];
     }
-    setProcessing(true);
-    const normalized = {
-      id: String(params.id),
-      name,
-      price,
-      image_url,
-      quantity: 1
-    };
-    AsyncStorage.getItem('cart').then(stored => {
-      let currentCart: typeof normalized[] = [];
-      if (stored) {
-        try {
-          currentCart = JSON.parse(stored);
-        } catch (e) {}
-      }
-      // Normaliza comparação: id, name e price
-      const isSameProduct = (item: typeof normalized) => {
-        return String(item.id) === normalized.id || (item.name === normalized.name && item.price === normalized.price);
-      };
-      const exists = currentCart.find(isSameProduct);
-      let newCart: typeof normalized[];
-      if (!exists) {
-        // Adiciona apenas se não existe produto igual
-        newCart = [...currentCart.filter(item => !isSameProduct(item)), normalized];
-        AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
-          setAdded(true);
-          setProcessing(false);
-          syncCartState();
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('cartUpdated'));
-          }
-          setTimeout(() => setAdded(false), 1200);
-        });
-      } else {
-        // Remove todos os produtos iguais
-        newCart = currentCart.filter(item => !isSameProduct(item));
-        AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
-          setAdded(false);
-          setProcessing(false);
-          syncCartState();
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('cartUpdated'));
-          }
-        });
-      }
-    });
+    setCart(newCart);
+    AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200);
   }
-  // Estado para refletir se o item está no carrinho (sempre atualizado)
-  const [isInCart, setIsInCart] = useState(false);
-
-  // Atualiza isInCart sempre que cart ou params.id mudam
-  React.useEffect(() => {
-    AsyncStorage.getItem('cart').then(stored => {
-      let currentCart: any[] = [];
-      if (stored) {
-        try {
-          currentCart = JSON.parse(stored);
-        } catch (e) {
-          console.log('[useEffect cart] error parsing cart:', e);
-        }
-      }
-      const paramId = String(params.id);
-      const inCart = currentCart.some(item => String(item.id) === paramId);
-      setIsInCart(inCart);
-    });
-  }, [cart, params.id]);
-  // ...existing code...
 
   return (
     <View style={styles.mainContainer}>
-      <StatusBar style="light" translucent />
-      {/* Top bar: back button + cart icon */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', position: 'absolute', top: Platform.OS === 'ios' ? 50 : 45, left: 20, right: 20, zIndex: 10 }}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Icon name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => router.push('/cart')}
-          style={{ marginRight: 0, padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)', position: 'relative' }}
-          accessibilityLabel="Abrir carrinho"
-        >
-          <Icon name="shopping-cart" size={24} color={'#fff'} />
-          {cartCount > 0 && (
-            <View style={{
-              position: 'absolute',
-              top: -4,
-              right: -4,
-              backgroundColor: '#FF7A00',
-              borderRadius: 10,
-              minWidth: 20,
-              height: 20,
-              justifyContent: 'center',
-              alignItems: 'center',
-              paddingHorizontal: 4,
-            }}>
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12, textAlign: 'center' }}>{cartCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      {/* Botão de voltar personalizado */}
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
+        <Icon name="arrow-left" size={24} color="#fff" />
+      </TouchableOpacity>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.container}
+        style={{marginTop: 0, paddingTop: 0}} // Garantir que não haja margem ou padding no topo
+      >
         <View style={styles.imageContainer}>
           {imageLoading && (
             <View style={styles.loadingContainer}>
@@ -250,43 +140,48 @@ export default function ProductDetailScreen() {
           </View>
           <View style={styles.divider} />
           <View style={styles.descriptionContainer}>
-    <View style={styles.sectionTitleContainer}>
-      <Icon name="file-text" size={18} color="#008A44" />
-      <Text style={styles.sectionTitle}>Descrição</Text>
-    </View>
-    <Text style={styles.description}>{description}</Text>
-    <View style={styles.detailsContainer}>
-      <View style={styles.detailRow}>
-        <View style={styles.detailIconContainer}>
-          <Icon name="archive" size={18} color="#008A44" />
-        </View>
-        <Text style={styles.detailLabel}>Estoque:</Text>
-        <Text style={styles.detailValue}>{stock_quantity}</Text>
-      </View>
-      <View style={styles.detailRow}>
-        <View style={styles.detailIconContainer}>
-          <Icon name="check-circle" size={18} color="#008A44" />
-        </View>
-        <Text style={styles.detailLabel}>Status:</Text>
-        <Text style={[styles.detailValue, {color: is_active ? '#008A44' : '#FF3B30'}]}>
-          {is_active ? 'Ativo' : 'Inativo'}
-        </Text>
-      </View>
-      {category_name && (
-        <View style={styles.detailRow}>
-          <View style={styles.detailIconContainer}>
-            <Icon name="tag" size={18} color="#008A44" />
+            <View style={styles.sectionTitleContainer}>
+              <Icon name="file-text" size={18} color="#008A44" />
+              <Text style={styles.sectionTitle}>Descrição</Text>
+            </View>
+            <Text style={styles.description}>
+              {description.trim() ? description : 'Sem descrição disponível para este produto.'}
+            </Text>
           </View>
-          <Text style={styles.detailLabel}>Categoria:</Text>
-          <Text style={styles.detailValue}>{category_name}</Text>
-        </View>
-      )}
-    </View>
+          <View style={styles.divider} />
+          <View style={styles.detailsContainer}>
+            <View style={styles.sectionTitleContainer}>
+              <Icon name="info" size={18} color="#008A44" />
+              <Text style={styles.sectionTitle}>Informações do Produto</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <View style={styles.detailIconContainer}>
+                <Icon name="tag" size={18} color="#008A44" />
+              </View>
+              <Text style={styles.detailLabel}>Categoria:</Text>
+              <Text style={styles.detailValue}>{category_name || 'N/A'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <View style={styles.detailIconContainer}>
+                <Icon name="package" size={18} color="#008A44" />
+              </View>
+              <Text style={styles.detailLabel}>Estoque:</Text>
+              <Text style={styles.detailValue}>{stock_quantity}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <View style={styles.detailIconContainer}>
+                <Icon name="check-circle" size={18} color="#008A44" />
+              </View>
+              <Text style={styles.detailLabel}>Status:</Text>
+              <Text style={[styles.detailValue, {color: is_active ? '#008A44' : '#FF3B30'}]}>
+                {is_active ? 'Ativo' : 'Inativo'}
+              </Text>
+            </View>
           </View>
           <TouchableOpacity 
-            style={[styles.addToCartButton, (stock_quantity <= 0 || processing || (isInCart && !cart.some(item => item.id === params.id))) && styles.disabledButton]}
-            disabled={stock_quantity <= 0 || processing}
-            onPress={handleAddOrRemoveCart}
+            style={[styles.addToCartButton, stock_quantity <= 0 && styles.disabledButton]}
+            disabled={stock_quantity <= 0}
+            onPress={handleAddToCart}
           >
             <LinearGradient
               colors={stock_quantity > 0 ? ['#FF7A00', '#FF9A40'] : ['#CCCCCC', '#AAAAAA']}
@@ -296,11 +191,7 @@ export default function ProductDetailScreen() {
             >
               <Icon name="shopping-cart" size={20} color="#fff" style={{marginRight: 8}} />
               <Text style={styles.addToCartText}>
-                {stock_quantity <= 0
-                  ? 'Produto Esgotado'
-                  : isInCart
-                    ? 'Remover do Carrinho'
-                    : (added ? 'Adicionado!' : 'Adicionar ao Carrinho')}
+                {stock_quantity > 0 ? (added ? 'Adicionado!' : 'Adicionar ao Carrinho') : 'Produto Esgotado'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -316,6 +207,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
     position: 'relative',
+    paddingTop: 0, // Garantir que não haja padding no topo
   },
   headerGradient: {
     paddingTop: Platform.OS === 'ios' ? 50 : 45,
@@ -339,7 +231,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 45,
+    top: Platform.OS === 'ios' ? 60 : 45, // Ajustado para ficar abaixo do header
     left: 20,
     zIndex: 10,
     width: 40,
@@ -358,6 +250,7 @@ const styles = StyleSheet.create({
     padding: 0,
     backgroundColor: 'transparent',
     paddingBottom: 30,
+    paddingTop: 0, // Garantir que não haja padding no topo
   },
   loadingContainer: {
     position: 'absolute',
@@ -377,7 +270,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    marginTop: -50, // Compensar o espaço do header transparente
+    marginTop: Platform.OS === 'ios' ? -50 : -30, // Ajustado para compensar o header
   },
   image: {
     width: '100%',
@@ -397,7 +290,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: -50,
+    marginTop: -30, // Ajustado para sobrepor ligeiramente a imagem
     paddingTop: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },

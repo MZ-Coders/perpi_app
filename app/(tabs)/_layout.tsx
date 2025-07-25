@@ -187,6 +187,19 @@ export default function TabLayout() {
           drawerLabel: 'Explorar',
         }}
       />
+      <Drawer.Screen
+        name="detalhes"
+        options={{
+          title: 'Detalhes do Produto',
+          headerTransparent: true,
+          headerTintColor: '#fff',
+          headerTitleStyle: { color: '#fff', fontWeight: 'bold' },
+          headerStyle: { backgroundColor: 'transparent' },
+          headerShadowVisible: false,
+          drawerItemStyle: { display: 'none' }, // Oculta do drawer
+          headerLeft: () => null // Remove o botão padrão do drawer
+        }}
+      />
       {/* Só mostra Favoritos e Perfil se autenticado */}
       {/* As rotas de Favoritos e Perfil são automáticas pelo Expo Router, não declare manualmente aqui! */}
     </Drawer>

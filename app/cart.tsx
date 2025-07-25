@@ -1,12 +1,95 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-// import { useAuthUser } from '../hooks/useAuthUser';
+import { supabase } from '../lib/supabaseClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuthUser } from '../hooks/useAuthUser';
 
 export default function CartScreen() {
-  const params = useLocalSearchParams();
+  const authUser = useAuthUser();
+  const user = authUser ? authUser : null;
+  const USER_ID = user?.id;
+  // TODO: Replace with real address selection
+  const DELIVERY_ADDRESS_ID = 1;
+
+  async function handleRealPurchase() {
+    if (!USER_ID) {
+      alert('Usuário não autenticado. Faça login para comprar.');
+      return;
+    }
+    if (cartItems.length === 0) return;
+    // DEBUG: log USER_ID and supabase.auth.getUser()
+    const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
+    console.log('[DEBUG] USER_ID:', USER_ID);
+    console.log('[DEBUG] supabase.auth.getUser():', sessionData, sessionError);
+    if (sessionData?.user?.id !== USER_ID) {
+      alert('ID do usuário não bate com sessão Supabase! USER_ID: ' + USER_ID + ' | Session: ' + sessionData?.user?.id);
+      return;
+    }
+    try {
+      // Buscar endereço e coordenadas do usuário
+      const { data: userData, error: userError } = await supabase
+        .from('users_')
+        .select('endereco, cidade, provincia, pais, latitude, longitude')
+        .eq('id', USER_ID)
+        .single();
+      if (userError || !userData) throw userError || new Error('Endereço do usuário não encontrado');
+
+      // 1. Criar pedido com endereço completo
+      const totalAmount = cartItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          // delivery_address_id: DELIVERY_ADDRESS_ID, // removido pois não existe
+          total_amount: totalAmount,
+          order_status: 'pending',
+          payment_method: 'mpesa',
+          payment_status: 'pending',
+          customer_id: USER_ID,
+          endereco_entrega: userData.endereco,
+          cidade_entrega: userData.cidade,
+          provincia_entrega: userData.provincia,
+          pais_entrega: userData.pais,
+          latitude_entrega: userData.latitude,
+          longitude_entrega: userData.longitude
+        })
+        .select()
+        .single();
+      if (orderError || !order) throw orderError || new Error('Order creation failed');
+
+      // 2. Adicionar itens do pedido
+      const orderItemsPayload = cartItems.map(item => ({
+        order_id: order.id,
+        product_id: item.id,
+        quantity: item.quantity || 1,
+        price_at_purchase: item.price
+      }));
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsPayload);
+      if (itemsError) throw itemsError;
+
+      // 3. Criar transação (opcional)
+      await supabase
+        .from('transactions')
+        .insert({
+          order_id: order.id,
+          amount: totalAmount,
+          transaction_type: 'purchase',
+          payment_method: 'mpesa',
+          transaction_status: 'pending',
+          user_id: USER_ID
+        });
+
+      // 4. Limpar carrinho
+      updateCart([]);
+      alert('Compra realizada com sucesso!');
+    } catch (err) {
+      alert('Erro ao realizar compra: ' + String(err?.message || err));
+    }
+  }
   const [cartItems, setCartItems] = useState<any[]>([]);
 
   // Sempre que a tela ganhar foco, recarrega o carrinho do AsyncStorage
@@ -30,8 +113,9 @@ export default function CartScreen() {
   function updateCart(newCart: any[]) {
     setCartItems(newCart);
     AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    // Dispara evento para atualização global do carrinho
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('cartUpdated'));
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
     }
   }
 
@@ -94,7 +178,7 @@ export default function CartScreen() {
       </View>
       <TouchableOpacity
         style={styles.buyBtn}
-        onPress={() => alert('Compra realizada!')}
+        onPress={handleRealPurchase}
         disabled={cartItems.length === 0}
       >
         <Text style={styles.buyBtnText}>Comprar</Text>

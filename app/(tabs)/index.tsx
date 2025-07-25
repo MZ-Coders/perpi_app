@@ -1,21 +1,46 @@
 // Favoritos
 type Favorite = { id: number; product_id: number };
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { Platform, View, TouchableOpacity, Image, ScrollView, Text, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuthUser } from '../../hooks/useAuthUser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import CategoryFilter from '../components/CategoryFilter';
+import { FlatList } from 'react-native';
 
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
+import { StyleSheet } from 'react-native';
 export default function ProductCatalogScreen() {
+  const authUser = useAuthUser();
+  // Detecta usuário logado apenas pelo hook useAuthUser
+  const user = authUser ? authUser : null;
+  // DEBUG: loga o estado do usuário ao montar
+  React.useEffect(() => {
+    console.log('[DEBUG] useAuthUser:', authUser);
+    if (authUser) {
+      console.log('[DEBUG] Usuário logado:', authUser);
+      alert('Usuário detectado: ' + (authUser.email || JSON.stringify(authUser)));
+    } else {
+      console.log('[DEBUG] Nenhum usuário logado');
+      alert('Nenhum usuário logado detectado no catálogo');
+    }
+  }, [authUser]);
+
+  // Se usar React Navigation, loga ao focar
+  // import { useFocusEffect } from '@react-navigation/native';
+  // useFocusEffect(
+  //   React.useCallback(() => {
+  //     const authUser = useAuthUser();
+  //     console.log('[DEBUG] useFocusEffect - useAuthUser:', authUser);
+  //   }, [])
+  // );
   const router = useRouter();
   const navigation = useNavigation();
   const [products, setProducts] = useState<any[]>([]);
@@ -27,55 +52,42 @@ export default function ProductCatalogScreen() {
   const [loading, setLoading] = useState(false);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [cart, setCart] = useState<any[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  // Adiciona ou remove produto do carrinho, com logging detalhado
+  // Adiciona ou remove produto do carrinho e persiste no AsyncStorage
   function handleToggleCart(product: any) {
     setCart(prev => {
-      const productId = String(product.id);
-      const exists = prev.find(p => String(p.id) === productId);
+      const exists = prev.find(p => p.id === product.id);
+      let newCart;
       if (exists) {
-        const filtered = prev.filter(p => String(p.id) !== productId);
-        return filtered;
+        newCart = prev.filter(p => p.id !== product.id);
       } else {
-        // Normaliza os campos do item para evitar duplicidade
-        const normalized = {
-          id: productId,
-          name: product.name,
-          price: product.price,
-          image_url: product.image_url,
-          quantity: 1
-        };
-        const newCart = [...prev, normalized];
-        return newCart;
+        newCart = [...prev, { ...product, quantity: 1 }];
       }
+      AsyncStorage.setItem('cart', JSON.stringify(newCart));
+      return newCart;
     });
   }
-
-  // Persiste o carrinho no AsyncStorage sempre que mudar, com logging
-  React.useEffect(() => {
-    AsyncStorage.setItem('cart', JSON.stringify(cart));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('cartUpdated'));
-    }
-  }, [cart]);
-
-  // Atualiza o carrinho sempre que a tela recebe foco, com logging
-  useFocusEffect(
-    React.useCallback(() => {
-      AsyncStorage.getItem('cart').then(data => {
-        if (data) {
+  // Carrega o carrinho do AsyncStorage ao montar e atualiza automaticamente
+  useEffect(() => {
+    function syncCart() {
+      AsyncStorage.getItem('cart').then(stored => {
+        if (stored) {
           try {
-            const arr = JSON.parse(data);
-            setCart(arr);
-          } catch (e) {
+            const parsed = JSON.parse(stored);
+            setCart(Array.isArray(parsed) ? parsed : []);
+          } catch {
             setCart([]);
           }
         } else {
           setCart([]);
         }
       });
-    }, [])
-  );
+    }
+    syncCart();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('cartUpdated', syncCart);
+      return () => window.removeEventListener('cartUpdated', syncCart);
+    }
+  }, []);
 
   // Adiciona ou remove favorito
   function handleToggleFavorite(productId: number) {
@@ -88,7 +100,7 @@ export default function ProductCatalogScreen() {
       }
     });
   }
-  const user = useAuthUser();
+  // ...existing code...
 
   // Busca produtos e categorias do Supabase
   React.useEffect(() => {
@@ -138,8 +150,8 @@ export default function ProductCatalogScreen() {
 
   function renderProduct({ item }: { item: any }) {
     const sharedId = `product-image-${item.id}`;
-    const isFav = Array.isArray(favorites) ? favorites.some((f: Favorite) => String(f.product_id) === String(item.id)) : false;
-    const inCart = Array.isArray(cart) ? cart.some((p: any) => String(p.id) === String(item.id)) : false;
+    const isFav = Array.isArray(favorites) ? favorites.some((f: Favorite) => f.product_id === item.id) : false;
+    const inCart = Array.isArray(cart) ? cart.some((p: any) => p.id === item.id) : false;
     const categoryObj = Array.isArray(categories) ? categories.find((c: any) => c.id === item.category_id) : null;
     const category_name = categoryObj ? categoryObj.name : '';
     if (viewType === 'grid') {
@@ -242,7 +254,18 @@ export default function ProductCatalogScreen() {
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
             <Text style={styles.title}>Perpi Shop</Text>
-            {/* Cart icon removed from catalog header. Cart icon is now only in layout header. */}
+            {user && (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => router.push({ pathname: '/cart' })} style={styles.cartIconBtn}>
+                  <Icon name="shopping-cart" size={24} color="#fff" />
+                  {cart.length > 0 && (
+                    <View style={styles.cartBadge}>
+                      <Text style={styles.cartBadgeText}>{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
           <View style={styles.searchContainer}>
             <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
@@ -370,7 +393,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     paddingHorizontal: 16,
-    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   searchIcon: {
     marginRight: 12,
@@ -385,7 +412,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 16,
     marginBottom: 8,
-    boxShadow: '0px 1px 2px rgba(0,0,0,0.05)',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   controlsRow: {
     flexDirection: 'row',
@@ -395,7 +426,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#fff',
     marginBottom: 8,
-    boxShadow: '0px 1px 2px rgba(0,0,0,0.05)',
   },
   resultsText: {
     fontSize: 14,
@@ -425,7 +455,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     overflow: 'hidden',
-    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   imageContainer: {
     position: 'relative',
@@ -467,7 +501,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-end',
-    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+    elevation: 2,
   },
   gridCartBtnInCart: {
     backgroundColor: '#008A44',
@@ -481,7 +515,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    boxShadow: '0px 1px 3px rgba(0,0,0,0.08)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
   listImageContainer: {
     marginRight: 16,
@@ -528,7 +566,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
-    boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+    elevation: 2,
   },
   listCartBtnInCart: {
     backgroundColor: '#008A44',
