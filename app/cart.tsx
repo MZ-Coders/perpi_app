@@ -16,16 +16,11 @@ export default function CartScreen() {
 
   async function handleRealPurchase() {
     if (!USER_ID) {
-      alert('Usuário não autenticado. Faça login para comprar.');
       return;
     }
     if (cartItems.length === 0) return;
-    // DEBUG: log USER_ID and supabase.auth.getUser()
-    const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
-    console.log('[DEBUG] USER_ID:', USER_ID);
-    console.log('[DEBUG] supabase.auth.getUser():', sessionData, sessionError);
+    const { data: sessionData } = await supabase.auth.getUser();
     if (sessionData?.user?.id !== USER_ID) {
-      alert('ID do usuário não bate com sessão Supabase! USER_ID: ' + USER_ID + ' | Session: ' + sessionData?.user?.id);
       return;
     }
     try {
@@ -85,9 +80,9 @@ export default function CartScreen() {
 
       // 4. Limpar carrinho
       updateCart([]);
-      alert('Compra realizada com sucesso!');
+      // Compra realizada com sucesso
     } catch (err) {
-      alert('Erro ao realizar compra: ' + String(err?.message || err));
+      // Erro ao realizar compra
     }
   }
   const [cartItems, setCartItems] = useState<any[]>([]);

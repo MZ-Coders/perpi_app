@@ -21,17 +21,7 @@ export default function ProductCatalogScreen() {
   const authUser = useAuthUser();
   // Detecta usuário logado apenas pelo hook useAuthUser
   const user = authUser ? authUser : null;
-  // DEBUG: loga o estado do usuário ao montar
-  React.useEffect(() => {
-    console.log('[DEBUG] useAuthUser:', authUser);
-    if (authUser) {
-      console.log('[DEBUG] Usuário logado:', authUser);
-      alert('Usuário detectado: ' + (authUser.email || JSON.stringify(authUser)));
-    } else {
-      console.log('[DEBUG] Nenhum usuário logado');
-      alert('Nenhum usuário logado detectado no catálogo');
-    }
-  }, [authUser]);
+  // ...existing code...
 
   // Se usar React Navigation, loga ao focar
   // import { useFocusEffect } from '@react-navigation/native';
