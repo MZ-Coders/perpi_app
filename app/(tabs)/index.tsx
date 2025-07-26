@@ -1,21 +1,19 @@
 // Favoritos
 type Favorite = { id: number; product_id: number };
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
-import { Platform, View, TouchableOpacity, Image, ScrollView, Text, TextInput } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Feather as Icon, MaterialCommunityIcons as MCIcon } from '@expo/vector-icons';
-import { useAuthUser } from '../../hooks/useAuthUser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
+import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
-import { FlatList } from 'react-native';
 
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
-import { StyleSheet } from 'react-native';
 // import AppHeader from '../../components/AppHeader';
 export default function ProductCatalogScreen() {
   // Debug: mostrar o objeto user no console
@@ -184,7 +182,10 @@ export default function ProductCatalogScreen() {
     const inCart = Array.isArray(cart) ? cart.some((p: any) => p.id === item.id) : false;
     const categoryObj = Array.isArray(categories) ? categories.find((c: any) => c.id === item.category_id) : null;
     const category_name = categoryObj ? categoryObj.name : '';
-    if (viewType === 'grid') {
+    // Card visual unificado para grid e lista
+    const isGrid = viewType === 'grid';
+    if (isGrid) {
+      // grid visual padrão
       return (
         <TouchableOpacity
           style={styles.gridCard}
@@ -233,47 +234,63 @@ export default function ProductCatalogScreen() {
         </TouchableOpacity>
       );
     }
-    // List view rendering
-        return (
-          <TouchableOpacity
-            style={styles.listItem}
-            activeOpacity={0.9}
-            onPress={() => router.push({ pathname: '/detalhes', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
-          >
-            <View style={styles.listImageContainer}>
+    // LISTA: favorito no topo à direita, carrinho embaixo à direita
+    return (
+      <TouchableOpacity
+        style={[styles.gridCard, { flexDirection: 'row', alignItems: 'center', padding: 12, height: 140 }]}
+        activeOpacity={0.9}
+        onPress={() => router.push({ pathname: '/detalhes', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
+      >
+        <View style={{ width: 100, height: 100, marginRight: 16, position: 'relative' }}>
+          {Platform.OS === 'web' || !SharedElement ? (
+            item.image_url ? (
+              <Image source={{ uri: item.image_url }} style={[styles.gridImage, { width: 100, height: 100, borderRadius: 12 }]} />
+            ) : (
+              <Image source={require('../../assets/images/placeholder-Products.jpg')} style={[styles.gridImage, { width: 100, height: 100, borderRadius: 12 }]} />
+            )
+          ) : (
+            <SharedElement id={sharedId} style={[styles.gridImage, { width: 100, height: 100, borderRadius: 12 }]} onNode={() => {}}>
               {item.image_url ? (
-                <Image source={{ uri: item.image_url }} style={styles.listImage} />
+                <Image source={{ uri: item.image_url }} style={[styles.gridImage, { width: 100, height: 100, borderRadius: 12 }]} />
               ) : (
-                <Image source={require('../../assets/images/placeholder-Products.jpg')} style={styles.listImage} />
+                <Image source={require('../../assets/images/placeholder-Products.jpg')} style={[styles.gridImage, { width: 100, height: 100, borderRadius: 12 }]} />
               )}
-            </View>
-            <View style={styles.listContent}>
-              <View style={styles.listHeader}>
-                <Text style={styles.listName} numberOfLines={2}>{item.name}</Text>
-                {user && (
-                  <TouchableOpacity 
-                    style={styles.listFavoriteBtn}
-                    onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
-                  >
-                    {isFav ? (
-                      <MCIcon name="heart" size={22} color="#FF7A00" />
-                    ) : (
-                      <MCIcon name="heart-outline" size={22} color="#E0E0E0" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-              <Text style={styles.listPrice}>MZN {item.price}</Text>
-              <TouchableOpacity
-                style={[styles.listCartBtn, inCart && styles.listCartBtnInCart]}
-                onPress={() => handleToggleCart(item)}
-              >
-                <Icon name={inCart ? 'check' : 'shopping-cart'} size={16} color="#fff" />
-                <Text style={styles.listCartBtnText}>{inCart ? 'No carrinho' : 'Adicionar ao carrinho'}</Text>
-              </TouchableOpacity>
-            </View>
+            </SharedElement>
+          )}
+        </View>
+        <View style={{ flex: 1, height: 100, justifyContent: 'space-between', position: 'relative' }}>
+          {/* Favorito no topo à direita */}
+          {user && (
+            <TouchableOpacity 
+              style={{ position: 'absolute', top: 0, right: 0, zIndex: 2, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 16, padding: 6 }}
+              onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
+            >
+              {isFav ? (
+                <MCIcon name="heart" size={20} color="#FF7A00" />
+              ) : (
+                <MCIcon name="heart-outline" size={20} color="#fff" />
+              )}
+            </TouchableOpacity>
+          )}
+          {/* Nome e preço à esquerda */}
+          <View style={{ justifyContent: 'flex-start', alignItems: 'flex-start', marginTop: 0 }}>
+            <Text style={[styles.gridName, { fontSize: 16, marginBottom: 6 }]} numberOfLines={2}>{item.name}</Text>
+            <Text style={[styles.gridPrice, { fontSize: 18, marginBottom: 0 }]}>MZN {item.price}</Text>
+          </View>
+          {/* Carrinho embaixo à direita */}
+          <TouchableOpacity
+            style={[
+              styles.gridCartBtn,
+              inCart && styles.gridCartBtnInCart,
+              { width: 40, height: 40, borderRadius: 20, position: 'absolute', bottom: 0, right: 0 }
+            ]}
+            onPress={() => handleToggleCart(item)}
+          >
+            <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
           </TouchableOpacity>
-        );
+        </View>
+      </TouchableOpacity>
+    );
   }
 
   return (
@@ -344,6 +361,23 @@ export default function ProductCatalogScreen() {
           showsVerticalScrollIndicator={true}
           bounces={true}
         >
+          {/* Campo de busca */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInnerBox}>
+              <Icon name="search" size={20} color="#888" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Buscar produtos..."
+                placeholderTextColor="#888"
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+                autoCorrect={false}
+                autoCapitalize="none"
+                underlineColorAndroid="transparent"
+              />
+            </View>
+          </View>
           {/* Filtro de categorias */}
           <View style={styles.categoryContainer}>
             <CategoryFilter
@@ -448,23 +482,43 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    backgroundColor: '#008A44',
+    borderRadius: 0,
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 10,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    justifyContent: 'center',
+    minHeight: 72,
+    paddingVertical: 14,
+    width: '100%',
+    paddingHorizontal: 16,
+  },
+  searchInnerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    flex: 1,
+    height: 44,
+    maxWidth: 480,
+    minWidth: 0,
   },
   searchIcon: {
-    marginRight: 12,
+    marginRight: 8,
+    color: '#888',
   },
   searchInput: { 
     flex: 1, 
-    paddingVertical: 14, 
+    paddingVertical: 0, 
     fontSize: 16, 
-    color: '#1A1A1A' 
+    color: '#1A1A1A',
+    backgroundColor: 'transparent',
   },
   categoryContainer: {
     backgroundColor: '#fff',

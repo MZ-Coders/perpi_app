@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../hooks/useAuthUser';
 
 interface AppHeaderProps {

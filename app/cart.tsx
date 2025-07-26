@@ -1,11 +1,10 @@
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View, DeviceEventEmitter } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
-import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { DeviceEventEmitter, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../hooks/useAuthUser';
+import { supabase } from '../lib/supabaseClient';
 
 export default function CartScreen() {
   const router = useRouter();

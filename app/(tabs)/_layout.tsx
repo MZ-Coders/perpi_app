@@ -1,16 +1,15 @@
 // As rotas de Favoritos e Perfil são declaradas dentro do componente, não fora!
 
 
-import { Colors } from '../../constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Text, TouchableOpacity, View, Platform } from 'react-native';
+import { Platform, Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import { Colors } from '../../constants/Colors';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import DrawerUserHeader from '../components/DrawerUserHeader';
 

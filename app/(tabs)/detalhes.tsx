@@ -8,13 +8,14 @@
 //   headerShadowVisible: false,
 //   headerLeft: () => null // Remove o botão padrão do drawer
 // };
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import ParallaxScrollView from '../../components/ParallaxScrollView';
 
 const { width } = Dimensions.get('window');
 let SharedElement: any = null;
@@ -85,31 +86,16 @@ export default function ProductDetailScreen() {
       >
         <Icon name="arrow-left" size={24} color="#fff" />
       </TouchableOpacity>
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.container}
-        style={{marginTop: 0, paddingTop: 0}} // Garantir que não haja margem ou padding no topo
-      >
-        <View style={styles.imageContainer}>
-          {imageLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#008A44" />
-            </View>
-          )}
-          {Platform.OS === 'web' || !SharedElement ? (
-            <>
-              <Image
-                source={image_url ? { uri: image_url } : require('../../assets/images/placeholder-Products.jpg')}
-                style={styles.image}
-                resizeMode="cover"
-                onLoadStart={() => setImageLoading(true)}
-                onLoadEnd={() => setImageLoading(false)}
-              />
-              <LinearGradient
-                colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.3)', 'transparent']}
-                style={styles.imageGradient}
-              />
-            </>
+      <ParallaxScrollView
+        headerImage={
+          Platform.OS === 'web' || !SharedElement ? (
+            <Image
+              source={image_url ? { uri: image_url } : require('../../assets/images/placeholder-Products.jpg')}
+              style={styles.image}
+              resizeMode="cover"
+              onLoadStart={() => setImageLoading(true)}
+              onLoadEnd={() => setImageLoading(false)}
+            />
           ) : (
             <SharedElement id={sharedId} style={styles.image}>
               <Image
@@ -119,13 +105,12 @@ export default function ProductDetailScreen() {
                 onLoadStart={() => setImageLoading(true)}
                 onLoadEnd={() => setImageLoading(false)}
               />
-              <LinearGradient
-                colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.3)', 'transparent']}
-                style={styles.imageGradient}
-              />
             </SharedElement>
-          )}
-        </View>
+          )
+        }
+        headerBackgroundColor={{ light: '#F8F9FA', dark: '#1A1A1A' }}
+        contentContainerStyle={{ padding: 0, paddingHorizontal: 0, paddingTop: 0 }}
+      >
         <View style={styles.infoContainer}>
           <View style={styles.headerInfo}>
             <View style={styles.nameContainer}>
@@ -196,7 +181,7 @@ export default function ProductDetailScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </ParallaxScrollView>
     </View>
   );
 }
@@ -286,18 +271,21 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   infoContainer: {
-    padding: 20,
     backgroundColor: '#F8F9FA',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: -30, // Ajustado para sobrepor ligeiramente a imagem
-    paddingTop: 30,
+    marginTop: 0, // Ajustado para sobrepor ligeiramente a imagem
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
-    zIndex: 2,
+    zIndex: 999,
+    padding: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   headerInfo: {
     flexDirection: 'row',

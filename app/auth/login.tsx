@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
-console.log('[DEBUG] Arquivo login.tsx carregado');
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Text, TextInput, TouchableOpacity, useColorScheme, View, StyleSheet, Image, ScrollView, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/Feather';
+import { Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
+import Icon from 'react-native-vector-icons/Feather';
+console.log('[DEBUG] Arquivo login.tsx carregado');
 
 const { width, height } = Dimensions.get('window');
 
