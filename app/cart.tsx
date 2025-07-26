@@ -157,14 +157,14 @@ export default function CartScreen() {
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.priceCart}>MZN {item.price}</Text>
                 <View style={styles.qtyRow}>
-                  <TouchableOpacity style={styles.qtyBtn} onPress={() => handleChangeQty(item.id, -1, item.quantity || 1)}>
+                  <TouchableOpacity style={styles.qtyBtn} onPressOut={() => handleChangeQty(item.id, -1, item.quantity || 1)}>
                     <Text style={styles.qtyBtnText}>-</Text>
                   </TouchableOpacity>
                   <Text style={styles.qtyText}>{item.quantity || 1}</Text>
-                  <TouchableOpacity style={styles.qtyBtn} onPress={() => handleChangeQty(item.id, 1, item.quantity || 1)}>
+                  <TouchableOpacity style={styles.qtyBtn} onPressOut={() => handleChangeQty(item.id, 1, item.quantity || 1)}>
                     <Text style={styles.qtyBtnText}>+</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveItem(item.id)}>
+                  <TouchableOpacity style={styles.removeBtn} onPressOut={() => handleRemoveItem(item.id)}>
                     <Icon name="trash-2" size={18} style={styles.removeBtnIcon} />
                   </TouchableOpacity>
                 </View>
@@ -182,8 +182,8 @@ export default function CartScreen() {
       </View>
       {user ? (
         <TouchableOpacity
-          style={styles.buyBtn}
-          onPress={handleRealPurchase}
+          style={[styles.buyBtn, cartItems.length === 0 && { opacity: 0.6 }]}
+          onPressOut={handleRealPurchase}
           disabled={cartItems.length === 0}
         >
           <Text style={styles.buyBtnText}>Comprar</Text>
@@ -191,7 +191,7 @@ export default function CartScreen() {
       ) : (
         <TouchableOpacity
           style={styles.buyBtn}
-          onPress={() => router.push('/login')}
+          onPressOut={() => router.push('/login')}
         >
           <Text style={styles.buyBtnText}>Fazer login para comprar</Text>
         </TouchableOpacity>
