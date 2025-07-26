@@ -154,10 +154,18 @@ export default function ProductCatalogScreen() {
         >
           <View style={styles.imageContainer}>
             {Platform.OS === 'web' || !SharedElement ? (
-              <Image source={{ uri: item.image_url }} style={styles.gridImage} />
+              item.image_url ? (
+                <Image source={{ uri: item.image_url }} style={styles.gridImage} />
+              ) : (
+                <Image source={require('../../assets/images/placeholder-Products.jpg')} style={styles.gridImage} />
+              )
             ) : (
               <SharedElement id={sharedId} style={styles.gridImage} onNode={() => {}}>
-                <Image source={{ uri: item.image_url }} style={styles.gridImage} />
+                {item.image_url ? (
+                  <Image source={{ uri: item.image_url }} style={styles.gridImage} />
+                ) : (
+                  <Image source={require('../../assets/images/placeholder-Products.jpg')} style={styles.gridImage} />
+                )}
               </SharedElement>
             )}
             {user && (
@@ -189,50 +197,48 @@ export default function ProductCatalogScreen() {
       );
     }
     // List view rendering
-    return (
-      <TouchableOpacity
-        style={styles.listItem}
-        activeOpacity={0.9}
-        onPress={() => router.push({ pathname: '/detalhes', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
-      >
-        <View style={styles.listImageContainer}>
-          {Platform.OS === 'web' || !SharedElement ? (
-            <Image source={{ uri: item.image_url }} style={styles.listImage} />
-          ) : (
-            <SharedElement id={sharedId} style={styles.listImage} onNode={() => {}}>
-              <Image source={{ uri: item.image_url }} style={styles.listImage} />
-            </SharedElement>
-          )}
-        </View>
-        <View style={styles.listContent}>
-          <View style={styles.listHeader}>
-            <Text style={styles.listName} numberOfLines={2}>{item.name}</Text>
-            {user && (
-              <TouchableOpacity 
-                style={styles.listFavoriteBtn}
-                onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
-              >
-                {isFav ? (
-                  <MCIcon name="heart" size={22} color="#FF7A00" />
-                ) : (
-                  <Icon name="heart" size={22} color="#E0E0E0" />
+        return (
+          <TouchableOpacity
+            style={styles.listItem}
+            activeOpacity={0.9}
+            onPress={() => router.push({ pathname: '/detalhes', params: { ...item, sharedId, description: item.description, stock_quantity: item.stock_quantity, is_active: item.is_active, category_name } })}
+          >
+            <View style={styles.listImageContainer}>
+              {item.image_url ? (
+                <Image source={{ uri: item.image_url }} style={styles.listImage} />
+              ) : (
+                <Image source={require('../../assets/images/placeholder-Products.jpg')} style={styles.listImage} />
+              )}
+            </View>
+            <View style={styles.listContent}>
+              <View style={styles.listHeader}>
+                <Text style={styles.listName} numberOfLines={2}>{item.name}</Text>
+                {user && (
+                  <TouchableOpacity 
+                    style={styles.listFavoriteBtn}
+                    onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
+                  >
+                    {isFav ? (
+                      <MCIcon name="heart" size={22} color="#FF7A00" />
+                    ) : (
+                      <Icon name="heart" size={22} color="#E0E0E0" />
+                    )}
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={styles.listPrice}>MZN {item.price}</Text>
-          {user && (
-            <TouchableOpacity
-              style={[styles.listCartBtn, inCart && styles.listCartBtnInCart]}
-              onPress={() => handleToggleCart(item)}
-            >
-              <Icon name={inCart ? 'check' : 'shopping-cart'} size={16} color="#fff" />
-              <Text style={styles.listCartBtnText}>{inCart ? 'No carrinho' : 'Adicionar ao carrinho'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
+              </View>
+              <Text style={styles.listPrice}>MZN {item.price}</Text>
+              {user && (
+                <TouchableOpacity
+                  style={[styles.listCartBtn, inCart && styles.listCartBtnInCart]}
+                  onPress={() => handleToggleCart(item)}
+                >
+                  <Icon name={inCart ? 'check' : 'shopping-cart'} size={16} color="#fff" />
+                  <Text style={styles.listCartBtnText}>{inCart ? 'No carrinho' : 'Adicionar ao carrinho'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+        );
   }
 
   return (
