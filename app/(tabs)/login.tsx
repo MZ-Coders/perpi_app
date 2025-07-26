@@ -1,10 +1,10 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
+import Logo from '../../components/Logo';
 import { supabase } from '../../lib/supabaseClient';
-
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -35,45 +35,116 @@ export default function LoginScreen() {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: 'exp://localhost:19000', // ajuste para seu ambiente
+        redirectTo: 'exp://localhost:19000',
       },
     });
     setLoading(false);
     if (error) {
       setError(error.message);
-    } // O fluxo OAuth redireciona automaticamente
+    }
   };
 
+  const isDark = colorScheme === 'dark';
+
   return (
-    <View style={[styles.container, colorScheme === 'dark' ? styles.dark : styles.light]}>
-      <Text style={styles.title}>Entrar</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
+    <View style={[styles.container, isDark ? styles.darkContainer : styles.lightContainer]}>
+      <StatusBar 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+        backgroundColor={isDark ? '#121212' : '#FDFDFB'} 
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      {error ? <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text> : null}
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.oauthButton} onPress={() => handleOAuthLogin('google')}>
-        <Text style={styles.oauthButtonText}>Entrar com Google</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.oauthButton} onPress={() => handleOAuthLogin('facebook')}>
-        <Text style={styles.oauthButtonText}>Entrar com Facebook</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/register')}>
-        <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
+      
+      {/* Header */}
+        <Logo />
+
+
+      {/* Form Container */}
+      <View style={[styles.formContainer, isDark ? styles.darkSurface : styles.lightSurface]}>
+        <Text style={[styles.formTitle, isDark && styles.darkText]}>Entrar</Text>
+        
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[
+              styles.input,
+              isDark ? styles.darkInput : styles.lightInput,
+              isDark && styles.darkInputText
+            ]}
+            placeholder="Email"
+            placeholderTextColor={isDark ? '#8E8E93' : '#5C5C5C'}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          
+          <TextInput
+            style={[
+              styles.input,
+              isDark ? styles.darkInput : styles.lightInput,
+              isDark && styles.darkInputText
+            ]}
+            placeholder="Senha"
+            placeholderTextColor={isDark ? '#8E8E93' : '#5C5C5C'}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : null}
+
+        {/* Primary Button */}
+        <TouchableOpacity
+          style={[styles.primaryButton, loading && styles.disabledButton]}
+          onPress={handleLogin}
+          disabled={loading}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.primaryButtonText}>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Divider */}
+        <View style={styles.dividerContainer}>
+          <View style={[styles.divider, isDark && styles.darkDivider]} />
+          <Text style={[styles.dividerText, isDark && styles.darkSecondaryText]}>ou</Text>
+          <View style={[styles.divider, isDark && styles.darkDivider]} />
+        </View>
+
+        {/* OAuth Buttons */}
+        <TouchableOpacity
+          style={[styles.secondaryButton, isDark ? styles.darkSecondaryButton : styles.lightSecondaryButton]}
+          onPress={() => handleOAuthLogin('google')}
+          activeOpacity={0.9}
+        >
+          <Text style={[styles.secondaryButtonText, isDark && styles.darkText]}>
+            Continuar com Google
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.secondaryButton, isDark ? styles.darkSecondaryButton : styles.lightSecondaryButton]}
+          onPress={() => handleOAuthLogin('facebook')}
+          activeOpacity={0.9}
+        >
+          <Text style={[styles.secondaryButtonText, isDark && styles.darkText]}>
+            Continuar com Facebook
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Footer */}
+      <TouchableOpacity 
+        style={styles.footer}
+        onPress={() => router.push('/register')}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.footerText, isDark && styles.darkSecondaryText]}>
+          Não tem conta? 
+        </Text>
+        <Text style={styles.footerLink}> Cadastre-se</Text>
       </TouchableOpacity>
     </View>
   );
@@ -82,58 +153,180 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 32,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 24,
-    color: '#008A44',
+  lightContainer: {
+    backgroundColor: '#FDFDFB',
   },
-  input: {
-    width: '100%',
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    marginBottom: 16,
-    backgroundColor: '#FFFFFF',
-    color: '#1A1A1A',
-  },
-  button: {
-    backgroundColor: '#FF7A00',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  link: {
-    color: '#008A44',
-    marginTop: 8,
-  },
-  oauthButton: {
-    backgroundColor: '#E0E0E0',
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  oauthButtonText: {
-    color: '#1A1A1A',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  dark: {
+  darkContainer: {
     backgroundColor: '#121212',
   },
-  light: {
+  
+  // Header
+  header: {
+    alignItems: 'center',
+    marginBottom: 48,
+  },
+  brandTitle: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#008A44',
+    letterSpacing: -0.01,
+    textTransform: 'uppercase',
+  },
+  brandSubtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FF7A00',
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+
+  // Form
+  formContainer: {
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  lightSurface: {
+    backgroundColor: '#FFFFFF',
+  },
+  darkSurface: {
+    backgroundColor: '#1E1E1E',
+  },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+
+  // Inputs
+  inputContainer: {
+    marginBottom: 16,
+  },
+  input: {
+    height: 52,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  lightInput: {
     backgroundColor: '#FDFDFB',
+    borderColor: '#E0E0E0',
+    color: '#1A1A1A',
+  },
+  darkInput: {
+    backgroundColor: '#2C2C2E',
+    borderColor: '#3A3A3C',
+  },
+  darkInputText: {
+    color: '#FFFFFF',
+  },
+
+  // Buttons
+  primaryButton: {
+    backgroundColor: '#FF7A00',
+    height: 52,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+
+  secondaryButton: {
+    height: 52,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  lightSecondaryButton: {
+    backgroundColor: 'transparent',
+    borderColor: '#E0E0E0',
+  },
+  darkSecondaryButton: {
+    backgroundColor: 'transparent',
+    borderColor: '#3A3A3C',
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+
+  // Divider
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  darkDivider: {
+    backgroundColor: '#3A3A3C',
+  },
+  dividerText: {
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: '#5C5C5C',
+  },
+
+  // Footer
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 'auto',
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#5C5C5C',
+  },
+  footerLink: {
+    fontSize: 14,
+    color: '#008A44',
+    fontWeight: '600',
+  },
+
+  // Error
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+
+  // Dark theme text
+  darkText: {
+    color: '#FFFFFF',
+  },
+  darkSecondaryText: {
+    color: '#8E8E93',
   },
 });

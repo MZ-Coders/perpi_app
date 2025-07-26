@@ -5,9 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState, useRef } from 'react';
-import { Animated } from 'react-native';
-import { FlatList, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
 
@@ -265,7 +264,7 @@ export default function ProductCatalogScreen() {
             <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.gridPrice}>MZN {item.price}</Text>
             <TouchableOpacity
-              style={[styles.gridCartBtn, inCart && styles.gridCartBtnInCart]}
+              style={[styles.gridCartBtn, inCart && styles.cartBtnInCart]}
               onPress={() => handleToggleCart(item)}
             >
               <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
@@ -321,7 +320,7 @@ export default function ProductCatalogScreen() {
           <TouchableOpacity
             style={[
               styles.gridCartBtn,
-              inCart && styles.gridCartBtnInCart,
+              inCart && styles.cartBtnInCart,
               { width: 40, height: 40, borderRadius: 20, position: 'absolute', bottom: 0, right: 0 }
             ]}
             onPress={() => handleToggleCart(item)}
@@ -584,7 +583,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 16,
     marginBottom: 8,
-    marginTop:170,
+    marginTop: 180,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -668,16 +667,17 @@ const styles = StyleSheet.create({
   },
   gridCartBtn: {
     backgroundColor: '#FF7A00',
-    borderRadius: 20,
-    width: 32,
-    height: 32,
+    borderRadius: 16, // igual ao favoriteBtn
+    width: 32, // igual ao favoriteBtn
+    height: 32, // igual ao favoriteBtn
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-end',
-    elevation: 2,
-  },
-  gridCartBtnInCart: {
-    backgroundColor: '#008A44',
+    // elevation: 2, // removido para tirar sombra
+    // shadowColor: '#000', // removido para tirar sombra
+    // shadowOffset: { width: 0, height: 2 }, // removido para tirar sombra
+    // shadowOpacity: 0.1, // removido para tirar sombra
+    // shadowRadius: 4, // removido para tirar sombra
   },
   
   // List styles
@@ -739,7 +739,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
-    elevation: 2,
+    // elevation: 2, // removido para tirar sombra
+    // shadowColor: '#000', // removido para tirar sombra
+    // shadowOffset: { width: 0, height: 2 }, // removido para tirar sombra
+    // shadowOpacity: 0.1, // removido para tirar sombra
+    // shadowRadius: 4, // removido para tirar sombra
   },
   listCartBtnInCart: {
     backgroundColor: '#008A44',

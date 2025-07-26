@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingTop: 40, // Ajuste para evitar sobreposição com a barra de status
     backgroundColor: '#008A44',
     borderBottomWidth: 0,
     elevation: 4,
