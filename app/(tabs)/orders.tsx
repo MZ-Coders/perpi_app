@@ -11,6 +11,7 @@ export default function OrdersScreen() {
   const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedOrders, setExpandedOrders] = useState<{ [orderId: number]: boolean }>({});
 
   useEffect(() => {
     (async () => {
@@ -102,67 +103,85 @@ export default function OrdersScreen() {
     });
   };
 
-  const renderOrderItem = ({ item }: { item: any }) => (
-    <View style={styles.orderCard}>
-      {/* Header do pedido */}
-      <View style={styles.orderHeader}>
-        <View style={styles.orderHeaderTop}>
-          <Text style={styles.orderId}>Pedido #{item.id}</Text>
-          <View style={[styles.statusBadge, getStatusColor(item.order_status)]}>
-            <Text style={styles.statusText}>{getStatusText(item.order_status)}</Text>
+  const renderOrderItem = ({ item }: { item: any }) => {
+    const expanded = expandedOrders[item.id] || false;
+    return (
+      <View style={styles.orderCard}>
+        {/* Header do pedido (sempre visível) */}
+
+        <View style={styles.orderHeader}>
+          <View style={styles.orderHeaderTop}>
+            <Text style={styles.orderId}>Pedido #{item.id}</Text>
+            <View style={[styles.statusBadge, getStatusColor(item.order_status)]}>
+              <Text style={styles.statusText}>{getStatusText(item.order_status)}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+            <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
+            <Text style={styles.orderTotalHighlight}>MZN {Number(item.total_amount).toFixed(2)}</Text>
           </View>
         </View>
-        <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
-      </View>
 
-      {/* Informações do pedido */}
-      <View style={styles.orderInfo}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Total:</Text>
-          <Text style={styles.totalAmount}>MZN {Number(item.total_amount).toFixed(2)}</Text>
-        </View>
-        
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Endereço:</Text>
-          <Text style={styles.infoValue} numberOfLines={2}>
-            {item.endereco_entrega}, {item.cidade_entrega}
-          </Text>
-        </View>
-      </View>
+        {/* Botão de expandir/recolher */}
+        <Text
+          style={{ color: '#008A44', fontWeight: 'bold', marginBottom: expanded ? 12 : 0, marginTop: 4, alignSelf: 'flex-end' }}
+          onPress={() => setExpandedOrders(prev => ({ ...prev, [item.id]: !expanded }))}
+        >
+          {expanded ? 'Ocultar detalhes ▲' : 'Ver detalhes ▼'}
+        </Text>
 
-      {/* Itens do pedido */}
-      {orderItems[item.id] && orderItems[item.id].length > 0 && (
-        <View style={styles.itemsSection}>
-          <Text style={styles.itemsTitle}>Itens do Pedido</Text>
-          <ScrollView style={styles.itemsList} nestedScrollEnabled>
-            {orderItems[item.id].map((orderItem: any, index: number) => (
-              <View key={`${orderItem.id}-${index}`} style={styles.orderItemRow}>
-                <View style={styles.itemImageContainer}>
-                  <Image
-                    source={orderItem.product?.image_url ? { uri: orderItem.product.image_url } : require('../../assets/images/placeholder-Products.jpg')}
-                    style={styles.itemImage}
-                    resizeMode="cover"
-                  />
-                </View>
-                
-                <View style={styles.itemDetails}>
-                  <Text style={styles.itemName} numberOfLines={2}>
-                    {orderItem.product?.name || 'Produto'}
-                  </Text>
-                  <View style={styles.itemMeta}>
-                    <Text style={styles.itemQuantity}>Qtd: {orderItem.quantity}</Text>
-                    <Text style={styles.itemPrice}>
-                      MZN {Number(orderItem.price_at_purchase).toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
+        {/* Detalhes só aparecem se expandido */}
+        {expanded && (
+          <>
+            {/* Informações do pedido */}
+            <View style={styles.orderInfo}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Total:</Text>
+                <Text style={styles.totalAmount}>MZN {Number(item.total_amount).toFixed(2)}</Text>
               </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-    </View>
-  );
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Endereço:</Text>
+                <Text style={styles.infoValue} numberOfLines={2}>
+                  {item.endereco_entrega}, {item.cidade_entrega}
+                </Text>
+              </View>
+            </View>
+
+            {/* Itens do pedido */}
+            {orderItems[item.id] && orderItems[item.id].length > 0 && (
+              <View style={styles.itemsSection}>
+                <Text style={styles.itemsTitle}>Itens do Pedido</Text>
+                <ScrollView style={styles.itemsList} nestedScrollEnabled>
+                  {orderItems[item.id].map((orderItem: any, index: number) => (
+                    <View key={`${orderItem.id}-${index}`} style={styles.orderItemRow}>
+                      <View style={styles.itemImageContainer}>
+                        <Image
+                          source={orderItem.product?.image_url ? { uri: orderItem.product.image_url } : require('../../assets/images/placeholder-Products.jpg')}
+                          style={styles.itemImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View style={styles.itemDetails}>
+                        <Text style={styles.itemName} numberOfLines={2}>
+                          {orderItem.product?.name || 'Produto'}
+                        </Text>
+                        <View style={styles.itemMeta}>
+                          <Text style={styles.itemQuantity}>Qtd: {orderItem.quantity}</Text>
+                          <Text style={styles.itemPrice}>
+                            MZN {Number(orderItem.price_at_purchase).toFixed(2)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </>
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -328,10 +347,18 @@ const styles = StyleSheet.create({
     flex: 2,
     textAlign: 'right',
   },
+
   totalAmount: {
     fontSize: 18, // title-md
     fontWeight: '700',
     color: '#008A44', // brand-color-primary
+  },
+
+  orderTotalHighlight: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FF7A00', // brand accent color
+    marginLeft: 8,
   },
 
   // Seção de itens
