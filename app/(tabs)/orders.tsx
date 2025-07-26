@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Image, ScrollView } from 'react-native';
-import { supabase } from '../lib/supabaseClient';
-import { useAuthUser } from '../hooks/useAuthUser';
+import { FlatList, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import AppHeader from '../../components/AppHeader';
+import { useAuthUser } from '../../hooks/useAuthUser';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function OrdersScreen() {
   const authUser = useAuthUser();
@@ -171,11 +172,7 @@ export default function OrdersScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header customizado */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Minhas Compras</Text>
-        <Text style={styles.headerSubtitle}>Histórico de pedidos</Text>
-      </View>
+      <AppHeader title="Meus Pedidos" />
 
       {loading ? (
         <View style={styles.loadingContainer}>

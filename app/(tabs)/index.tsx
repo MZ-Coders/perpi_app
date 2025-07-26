@@ -17,6 +17,7 @@ if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
 import { StyleSheet } from 'react-native';
+import AppHeader from '../../components/AppHeader';
 export default function ProductCatalogScreen() {
   const authUser = useAuthUser();
   // Detecta usuário logado apenas pelo hook useAuthUser
@@ -236,7 +237,8 @@ export default function ProductCatalogScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header com gradiente - fora do ScrollView para ficar fixo */}
+      <AppHeader title="Perpi Shop" onMenuPress={() => navigation.openDrawer()} />
+      {/* ...existing code... */}
       <LinearGradient
         colors={['#008A44', '#00B359']}
         style={styles.header}

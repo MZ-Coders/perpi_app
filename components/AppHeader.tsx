@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useRouter } from 'expo-router';
+import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { useAuthUser } from '../hooks/useAuthUser';
 
 interface AppHeaderProps {
@@ -13,23 +14,34 @@ interface AppHeaderProps {
 
 const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart = true, showUser = true }) => {
   const router = useRouter();
+  const navigation = useNavigation();
   const user = useAuthUser();
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity onPress={onMenuPress} style={styles.iconButton} accessibilityLabel="Abrir menu">
-        <Icon name="menu" size={28} color="#008A44" />
+      <TouchableOpacity
+        onPress={() => {
+          if (onMenuPress) {
+            onMenuPress();
+          } else {
+            navigation.dispatch(DrawerActions.openDrawer());
+          }
+        }}
+        style={styles.iconButton}
+        accessibilityLabel="Abrir menu"
+      >
+        <Icon name="menu" size={28} color="#fff" />
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>
       <View style={styles.rightIcons}>
         {showCart && (
           <TouchableOpacity onPress={() => router.push('/cart')} style={styles.iconButton} accessibilityLabel="Abrir carrinho">
-            <Icon name="shopping-cart" size={24} color="#008A44" />
+            <Icon name="shopping-cart" size={24} color="#fff" />
           </TouchableOpacity>
         )}
         {showUser && user && (
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.iconButton} accessibilityLabel="Ir para o perfil">
-            <Icon name="user" size={24} color="#008A44" />
+            <Icon name="user" size={24} color="#fff" />
           </TouchableOpacity>
         )}
       </View>
@@ -44,26 +56,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F3F3',
-    elevation: 2,
+    backgroundColor: '#008A44',
+    borderBottomWidth: 0,
+    elevation: 4,
+    shadowColor: '#008A44',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   iconButton: {
-    padding: 6,
+    padding: 8,
     borderRadius: 20,
-    marginHorizontal: 2,
+    marginHorizontal: 6,
   },
   title: {
     flex: 1,
     textAlign: 'center',
     fontWeight: 'bold',
-    fontSize: 20,
-    color: '#008A44',
+    fontSize: 22,
+    color: '#fff',
+    letterSpacing: 1,
   },
   rightIcons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
 });
 

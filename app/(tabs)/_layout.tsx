@@ -1,7 +1,7 @@
 // As rotas de Favoritos e Perfil são declaradas dentro do componente, não fora!
 
 
-import { Colors } from '@/constants/Colors';
+import { Colors } from '../../constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
@@ -56,7 +56,7 @@ export default function TabLayout() {
     <Drawer
       screenOptions={{
         drawerActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: true,
+        headerShown: false,
         // You can customize the drawer style and header here
       }}
       drawerContent={props => {
@@ -120,44 +120,7 @@ export default function TabLayout() {
         options={{
           title: 'Catálogo',
           drawerLabel: 'Catálogo',
-          headerStyle: { backgroundColor: '#008A44', elevation: 0, shadowOpacity: 0, borderBottomWidth: 0 },
-          headerTintColor: '#fff',
-          headerTitleStyle: { color: '#fff', fontWeight: 'bold' },
-          headerRight: ({ tintColor }) =>
-            user ? (
-              <>
-                <TouchableOpacity
-                  onPress={() => router.push('/cart')}
-                  style={{ marginRight: 8, padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)', position: 'relative' }}
-                  accessibilityLabel="Abrir carrinho"
-                >
-                  <Icon name="shopping-cart" size={24} color={'#fff'} />
-                  {cartCount > 0 && (
-                    <View style={{
-                      position: 'absolute',
-                      top: -4,
-                      right: -4,
-                      backgroundColor: '#FF7A00',
-                      borderRadius: 10,
-                      minWidth: 20,
-                      height: 20,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      paddingHorizontal: 4,
-                    }}>
-                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12, textAlign: 'center' }}>{cartCount}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => router.push('/(tabs)/profile')}
-                  style={{ marginRight: 16, padding: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)' }}
-                  accessibilityLabel="Ir para o perfil"
-                >
-                  <Icon name="user" size={24} color={'#fff'} />
-                </TouchableOpacity>
-              </>
-            ) : null,
+          headerShown: false,
         }}
       />
       {/* Adiciona explicitamente as rotas de Favoritos e Perfil para garantir navegação */}
@@ -169,6 +132,7 @@ export default function TabLayout() {
               drawerLabel: 'Favoritos',
               title: 'Favoritos',
               headerTitle: 'Favoritos',
+              headerShown: false,
             }}
           />
           <Drawer.Screen
@@ -177,6 +141,7 @@ export default function TabLayout() {
               drawerLabel: 'Perfil',
               title: 'Perfil',
               headerTitle: 'Perfil',
+              headerShown: false,
             }}
           />
         </>
@@ -186,6 +151,7 @@ export default function TabLayout() {
         options={{
           title: 'Explore',
           drawerLabel: 'Explorar',
+          headerShown: false,
         }}
       />
       <Drawer.Screen
@@ -198,7 +164,8 @@ export default function TabLayout() {
           headerStyle: { backgroundColor: 'transparent' },
           headerShadowVisible: false,
           drawerItemStyle: { display: 'none' }, // Oculta do drawer
-          headerLeft: () => null // Remove o botão padrão do drawer
+          headerLeft: () => null, // Remove o botão padrão do drawer
+          headerShown: false,
         }}
       />
       {/* Só mostra Favoritos e Perfil se autenticado */}
