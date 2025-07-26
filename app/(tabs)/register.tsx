@@ -3,50 +3,41 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../../lib/supabaseClient';
 
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [celular, setCelular] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
   const router = useRouter();
 
-  const handleLogin = async () => {
+  const handleRegister = async () => {
     setError('');
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
+    if (!error && data?.user) {
+      await supabase.from('users').insert([
+        { id: data.user.id, email, celular }
+      ]);
+    }
     setLoading(false);
     if (error) {
       setError(error.message);
     } else {
-      router.replace('/profile');
+      router.replace('/login');
     }
-  };
-
-  const handleOAuthLogin = async (provider: 'google' | 'facebook') => {
-    setError('');
-    setLoading(true);
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: 'exp://localhost:19000', // ajuste para seu ambiente
-      },
-    });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } // O fluxo OAuth redireciona automaticamente
   };
 
   return (
     <View style={[styles.container, colorScheme === 'dark' ? styles.dark : styles.light]}>
-      <Text style={styles.title}>Entrar</Text>
+      <Text style={styles.title}>Cadastro</Text>
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -57,23 +48,24 @@ export default function LoginScreen() {
       />
       <TextInput
         style={styles.input}
+        placeholder="Celular"
+        value={celular}
+        onChangeText={setCelular}
+        keyboardType="phone-pad"
+      />
+      <TextInput
+        style={styles.input}
         placeholder="Senha"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
       {error ? <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text> : null}
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
+      <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
+        <Text style={styles.buttonText}>{loading ? 'Cadastrando...' : 'Cadastrar'}</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.oauthButton} onPress={() => handleOAuthLogin('google')}>
-        <Text style={styles.oauthButtonText}>Entrar com Google</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.oauthButton} onPress={() => handleOAuthLogin('facebook')}>
-        <Text style={styles.oauthButtonText}>Entrar com Facebook</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/register')}>
-        <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
+      <TouchableOpacity onPress={() => router.push('/login')}>
+        <Text style={styles.link}>Já tem conta? Entrar</Text>
       </TouchableOpacity>
     </View>
   );
@@ -117,18 +109,6 @@ const styles = StyleSheet.create({
   link: {
     color: '#008A44',
     marginTop: 8,
-  },
-  oauthButton: {
-    backgroundColor: '#E0E0E0',
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  oauthButtonText: {
-    color: '#1A1A1A',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
   dark: {
     backgroundColor: '#121212',

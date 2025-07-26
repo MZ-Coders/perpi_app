@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import AppHeader from '../../components/AppHeader';
 // import supabase client here
 
 export default function UserProfileScreen({ navigation }) {
@@ -14,6 +15,7 @@ export default function UserProfileScreen({ navigation }) {
 
   return (
     <View style={[styles.container, colorScheme === 'dark' ? styles.dark : styles.light]}>
+      <AppHeader title="Perfil" />
       <Text style={styles.title}>Perfil do Usuário</Text>
       <Text style={styles.label}>Nome: <Text style={styles.value}>{user.name}</Text></Text>
       <Text style={styles.label}>Email: <Text style={styles.value}>{user.email}</Text></Text>
