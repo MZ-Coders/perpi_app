@@ -21,7 +21,7 @@ export default function ProductCatalogScreen() {
   const user = authUser ? authUser : null;
   // Debug: mostrar o objeto user no console
   React.useEffect(() => {
-    console.log('user:', user);
+    // console.log('user:', user);
   }, [user]);
 
   // Estado para dados do perfil na tabela users_
@@ -54,7 +54,7 @@ export default function ProductCatalogScreen() {
   }, [user]);
   // Debug: mostrar o objeto user no console
   React.useEffect(() => {
-    console.log('user:', user);
+    // console.log('user:', user);
   }, [user]);
   // ...existing code...
 
@@ -383,7 +383,7 @@ export default function ProductCatalogScreen() {
             >
               <Icon name="menu" size={26} color="#fff" />
             </TouchableOpacity>
-            <Text style={styles.title}>Perpi Shop</Text>
+            <Text style={styles.title}>Perpi</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity
                 style={styles.cartIconBtn}
