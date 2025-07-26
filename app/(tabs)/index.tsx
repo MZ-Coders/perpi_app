@@ -2,11 +2,10 @@
 type Favorite = { id: number; product_id: number };
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { Platform, View, TouchableOpacity, Image, ScrollView, Text, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/Feather';
-import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Feather as Icon, MaterialCommunityIcons as MCIcon } from '@expo/vector-icons';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CategoryFilter from '../components/CategoryFilter';
@@ -17,7 +16,7 @@ if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
 }
 import { StyleSheet } from 'react-native';
-import AppHeader from '../../components/AppHeader';
+// import AppHeader from '../../components/AppHeader';
 export default function ProductCatalogScreen() {
   const authUser = useAuthUser();
   // Detecta usuário logado apenas pelo hook useAuthUser
@@ -74,10 +73,13 @@ export default function ProductCatalogScreen() {
       });
     }
     syncCart();
-    if (typeof window !== 'undefined') {
+    // Só adiciona o event listener no web
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       window.addEventListener('cartUpdated', syncCart);
       return () => window.removeEventListener('cartUpdated', syncCart);
     }
+    // No mobile, não faz nada
+    return undefined;
   }, []);
 
   // Adiciona ou remove favorito
@@ -176,7 +178,7 @@ export default function ProductCatalogScreen() {
                 {isFav ? (
                   <MCIcon name="heart" size={20} color="#FF7A00" />
                 ) : (
-                  <Icon name="heart" size={20} color="#fff" />
+                  <MCIcon name="heart-outline" size={20} color="#fff" />
                 )}
               </TouchableOpacity>
             )}
@@ -221,7 +223,7 @@ export default function ProductCatalogScreen() {
                     {isFav ? (
                       <MCIcon name="heart" size={22} color="#FF7A00" />
                     ) : (
-                      <Icon name="heart" size={22} color="#E0E0E0" />
+                      <MCIcon name="heart-outline" size={22} color="#E0E0E0" />
                     )}
                   </TouchableOpacity>
                 )}
@@ -243,96 +245,90 @@ export default function ProductCatalogScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Perpi Shop" onMenuPress={() => navigation.openDrawer()} />
-      {/* ...existing code... */}
-      <LinearGradient
-        colors={['#008A44', '#00B359']}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <Text style={styles.title}>Perpi Shop</Text>
-            {user && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <TouchableOpacity onPress={() => router.push({ pathname: '/cart' })} style={styles.cartIconBtn}>
-                  <Icon name="shopping-cart" size={24} color="#fff" />
-                  {cart.length > 0 && (
-                    <View style={styles.cartBadge}>
-                      <Text style={styles.cartBadgeText}>{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push({ pathname: '/orders' })} style={styles.cartIconBtn}>
-                  <MCIcon name="clipboard-list" size={24} color="#fff" />
-                </TouchableOpacity>
+      {/* Header customizado com fundo verde, menu e carrinho */}
+      <LinearGradient colors={["#008A44", "#00C851"]} style={styles.header}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity
+            onPress={() => {
+              // Abre o Drawer se disponível
+              if (navigation && navigation.dispatch) {
+                navigation.dispatch(DrawerActions.openDrawer());
+              } else if (router && router.canGoBack()) {
+                router.back();
+              }
+            }}
+            style={styles.cartIconBtn}
+          >
+            <Icon name="menu" size={26} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Perpi Shop</Text>
+          <TouchableOpacity
+            style={styles.cartIconBtn}
+            onPress={() => router.push('/cart')}
+          >
+            <Icon name="shopping-cart" size={24} color="#fff" />
+            {cart.length > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cart.length}</Text>
               </View>
             )}
-          </View>
-          <View style={styles.searchContainer}>
-            <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar produtos..."
-              value={search}
-              onChangeText={setSearch}
-              placeholderTextColor="#999"
-            />
-          </View>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
-
-      {/* Conteúdo scrollável */}
-      <ScrollView 
-        style={styles.scrollableContent}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-        showsVerticalScrollIndicator={true}
-        bounces={true}
-      >
-        {/* Filtro de categorias */}
-        <View style={styles.categoryContainer}>
-          <CategoryFilter
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onSelect={setSelectedCategory}
-          />
-        </View>
-
-        <View style={styles.controlsRow}>
-          <Text style={styles.resultsText}>
-            {filtered.length} produto{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
-          </Text>
-          <View style={styles.toggleRow}>
-            <TouchableOpacity
-              style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
-              onPress={() => setViewType('list')}
-            >
-              <Icon name="list" size={18} color={viewType === 'list' ? '#fff' : '#008A44'} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleIconBtn, viewType === 'grid' && styles.toggleIconBtnActive]}
-              onPress={() => setViewType('grid')}
-            >
-              <Icon name="grid" size={18} color={viewType === 'grid' ? '#fff' : '#008A44'} />
-            </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        {/* Conteúdo scrollável */}
+        <ScrollView 
+          style={styles.scrollableContent}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+          showsVerticalScrollIndicator={true}
+          bounces={true}
+        >
+          {/* Filtro de categorias */}
+          <View style={styles.categoryContainer}>
+            <CategoryFilter
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelect={setSelectedCategory}
+            />
           </View>
-        </View>
-        
-        {/* Lista de produtos */}
-        <FlatList
-          data={filtered}
-          key={viewType}
-          keyExtractor={item => item.id.toString()}
-          numColumns={viewType === 'grid' ? 2 : 1}
-          renderItem={renderProduct}
-          contentContainerStyle={{ paddingBottom: 32 }}
-          ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
-          refreshing={loading}
-          onRefresh={() => {}}
-          nestedScrollEnabled={true}
-          scrollEnabled={false} // Desabilita o scroll do FlatList para usar apenas o ScrollView principal
-          scrollToOverflowEnabled={true}
-        />
-      </ScrollView>
+
+          <View style={styles.controlsRow}>
+            <Text style={styles.resultsText}>
+              {filtered.length} produto{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+            </Text>
+            <View style={styles.toggleRow}>
+              <TouchableOpacity
+                style={[styles.toggleIconBtn, viewType === 'list' && styles.toggleIconBtnActive]}
+                onPress={() => setViewType('list')}
+              >
+                <Icon name="list" size={18} color={viewType === 'list' ? '#fff' : '#008A44'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleIconBtn, viewType === 'grid' && styles.toggleIconBtnActive]}
+                onPress={() => setViewType('grid')}
+              >
+                <Icon name="grid" size={18} color={viewType === 'grid' ? '#fff' : '#008A44'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          {/* Lista de produtos */}
+          <FlatList
+            data={filtered}
+            key={viewType}
+            keyExtractor={item => item.id.toString()}
+            numColumns={viewType === 'grid' ? 2 : 1}
+            renderItem={renderProduct}
+            contentContainerStyle={{ paddingBottom: 32 }}
+            ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
+            refreshing={loading}
+            onRefresh={() => {}}
+            nestedScrollEnabled={true}
+            scrollEnabled={false} // Desabilita o scroll do FlatList para usar apenas o ScrollView principal
+            scrollToOverflowEnabled={true}
+          />
+        </ScrollView>
+      </View>
     </View>
   );
 }

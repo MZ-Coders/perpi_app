@@ -9,7 +9,7 @@ import { Drawer } from 'expo-router/drawer';
 import React from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import DrawerUserHeader from '../components/DrawerUserHeader';
@@ -40,12 +40,15 @@ export default function TabLayout() {
       }
     };
     updateCartCount();
-    // Escuta evento customizado disparado em cart.tsx
+    // Escuta evento customizado disparado em cart.tsx (apenas no web)
     const handler = () => updateCartCount();
-    window.addEventListener('cartUpdated', handler);
-    return () => {
-      window.removeEventListener('cartUpdated', handler);
-    };
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function' && Platform.OS === 'web') {
+      window.addEventListener('cartUpdated', handler);
+      return () => {
+        window.removeEventListener('cartUpdated', handler);
+      };
+    }
+    return undefined;
   }, [user]);
   React.useEffect(() => {
     setChecked(true);
