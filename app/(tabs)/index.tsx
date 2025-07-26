@@ -5,7 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Animated } from 'react-native';
 import { FlatList, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
@@ -16,13 +17,13 @@ if (Platform.OS !== 'web') {
 }
 // import AppHeader from '../../components/AppHeader';
 export default function ProductCatalogScreen() {
+  const authUser = useAuthUser();
+  // Detecta usuário logado apenas pelo hook useAuthUser
+  const user = authUser ? authUser : null;
   // Debug: mostrar o objeto user no console
   React.useEffect(() => {
     console.log('user:', user);
   }, [user]);
-  const authUser = useAuthUser();
-  // Detecta usuário logado apenas pelo hook useAuthUser
-  const user = authUser ? authUser : null;
 
   // Estado para dados do perfil na tabela users_
   const [profile, setProfile] = useState<any>(null);
@@ -77,6 +78,45 @@ export default function ProductCatalogScreen() {
   const [loading, setLoading] = useState(false);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [cart, setCart] = useState<any[]>([]);
+
+  // Animated value para mostrar/esconder o header de busca fixo
+  const searchAnim = useRef(new Animated.Value(0)).current; // 0: visível, -80: escondido
+  const lastScrollY = useRef(0);
+  const isHidden = useRef(false);
+  const [showSearch, setShowSearch] = useState(true);
+
+  // Sincroniza estado showSearch com valor animado
+  useEffect(() => {
+    const id = searchAnim.addListener(({ value }) => {
+      setShowSearch(value > -79);
+    });
+    return () => searchAnim.removeListener(id);
+  }, [searchAnim]);
+
+  // Handler para animar header conforme scroll
+  const handleScroll = (event: any) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const delta = y - lastScrollY.current;
+    lastScrollY.current = y;
+    // Se desce, esconde; se sobe, mostra
+    if (delta > 4 && !isHidden.current && y > 10) {
+      // Esconde
+      Animated.timing(searchAnim, {
+        toValue: -80,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+      isHidden.current = true;
+    } else if (delta < -4 && isHidden.current) {
+      // Mostra
+      Animated.timing(searchAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+      isHidden.current = false;
+    }
+  };
   // Adiciona ou remove produto do carrinho e persiste no AsyncStorage
   function handleToggleCart(product: any) {
     setCart(prev => {
@@ -296,88 +336,108 @@ export default function ProductCatalogScreen() {
   return (
     <View style={styles.container}>
       {/* Header customizado com fundo verde, menu e carrinho */}
-      <LinearGradient colors={["#008A44", "#00C851"]} style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity
-            onPress={() => {
-              // Abre o Drawer se disponível
-              if (navigation && navigation.dispatch) {
-                navigation.dispatch(DrawerActions.openDrawer());
-              } else if (router && router.canGoBack()) {
-                router.back();
-              }
-            }}
-            style={styles.cartIconBtn}
-          >
-            <Icon name="menu" size={26} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Perpi Shop</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View style={{ position: 'relative' }}>
+        {/* Search container flutuante, mas atrás do header */}
+        <Animated.View
+          style={[
+            styles.searchContainer,
+            {
+              position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+              top: Platform.OS === 'web' ? 115 : 115, // ajuste conforme header
+              left: 0,
+              right: 0,
+              zIndex: 1, // menor que o header
+              transform: [{ translateY: searchAnim }],
+              elevation: 2,
+              overflow: 'hidden',
+            },
+          ]}
+        >
+          <View style={styles.searchInnerBox}>
+            <Icon name="search" size={20} color="#888" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar produtos..."
+              placeholderTextColor="#888"
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
+              underlineColorAndroid="transparent"
+            />
+          </View>
+        </Animated.View>
+
+        {/* Header sempre acima do search container */}
+        <LinearGradient colors={["#008A44", "#00C851"]} style={[styles.header, { zIndex: 2, position: Platform.OS === 'web' ? 'fixed' : 'absolute', top: 0, left: 0, right: 0, elevation: 10 }] /* header sempre acima */}>
+          <View style={styles.headerTop}>
             <TouchableOpacity
-              style={styles.cartIconBtn}
-              onPress={() => router.push('/cart')}
-            >
-              <Icon name="shopping-cart" size={24} color="#fff" />
-              {cart.length > 0 && (
-                <View style={styles.cartBadge}>
-                  <Text style={styles.cartBadgeText}>{cart.length}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.cartIconBtn, { marginLeft: 8, padding: 0, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)' }]}
               onPress={() => {
-                if (user) {
-                  router.push('/profile');
-                } else {
-                  router.push('/login');
+                if (navigation && navigation.dispatch) {
+                  navigation.dispatch(DrawerActions.openDrawer());
+                } else if (router && router.canGoBack()) {
+                  router.back();
                 }
               }}
+              style={styles.cartIconBtn}
             >
-              {profile && profile.profile_picture_url ? (
-                <Image
-                  source={{ uri: profile.profile_picture_url }}
-                  style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: '#fff', backgroundColor: '#eee' }}
-                  resizeMode="cover"
-                />
-              ) : profile && (profile.nome || profile.email) ? (
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' }}>
-                  <Text style={{ fontWeight: 'bold', color: '#008A44', fontSize: 16 }}>
-                    {((profile.nome || profile.email || '').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0,2))}
-                  </Text>
-                </View>
-              ) : (
-                <MCIcon name="account-circle" size={28} color="#fff" />
-              )}
+              <Icon name="menu" size={26} color="#fff" />
             </TouchableOpacity>
+            <Text style={styles.title}>Perpi Shop</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                style={styles.cartIconBtn}
+                onPress={() => router.push('/cart')}
+              >
+                <Icon name="shopping-cart" size={24} color="#fff" />
+                {cart.length > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{cart.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cartIconBtn, { marginLeft: 8, padding: 0, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)' }]}
+                onPress={() => {
+                  if (user) {
+                    router.push('/profile');
+                  } else {
+                    router.push('/login');
+                  }
+                }}
+              >
+                {profile && profile.profile_picture_url ? (
+                  <Image
+                    source={{ uri: profile.profile_picture_url }}
+                    style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: '#fff', backgroundColor: '#eee' }}
+                    resizeMode="cover"
+                  />
+                ) : profile && (profile.nome || profile.email) ? (
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' }}>
+                    <Text style={{ fontWeight: 'bold', color: '#008A44', fontSize: 16 }}>
+                      {((profile.nome || profile.email || '').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0,2))}
+                    </Text>
+                  </View>
+                ) : (
+                  <MCIcon name="account-circle" size={28} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+      </View>
+
       <View style={{ flex: 1 }}>
-        {/* Conteúdo scrollável */}
-        <ScrollView 
+        {/* Conteúdo scrollável com marginTop para compensar search container */}
+        <ScrollView
           style={styles.scrollableContent}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={true}
           bounces={true}
+          scrollEventThrottle={16}
+          onScroll={handleScroll}
         >
-          {/* Campo de busca */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInnerBox}>
-              <Icon name="search" size={20} color="#888" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar produtos..."
-                placeholderTextColor="#888"
-                value={search}
-                onChangeText={setSearch}
-                returnKeyType="search"
-                autoCorrect={false}
-                autoCapitalize="none"
-                underlineColorAndroid="transparent"
-              />
-            </View>
-          </View>
           {/* Filtro de categorias */}
           <View style={styles.categoryContainer}>
             <CategoryFilter
@@ -419,7 +479,7 @@ export default function ProductCatalogScreen() {
             refreshing={loading}
             onRefresh={() => {}}
             nestedScrollEnabled={true}
-            scrollEnabled={false} // Desabilita o scroll do FlatList para usar apenas o ScrollView principal
+            scrollEnabled={false}
             scrollToOverflowEnabled={true}
           />
         </ScrollView>
@@ -482,15 +542,15 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#008A44',
+    backgroundColor: '#00C851',
     borderRadius: 0,
     marginHorizontal: 0,
     marginTop: 0,
     marginBottom: 10,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.1,
     shadowRadius: 4,
     justifyContent: 'center',
     minHeight: 72,
@@ -524,6 +584,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 16,
     marginBottom: 8,
+    marginTop:170,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
