@@ -18,9 +18,46 @@ if (Platform.OS !== 'web') {
 import { StyleSheet } from 'react-native';
 // import AppHeader from '../../components/AppHeader';
 export default function ProductCatalogScreen() {
+  // Debug: mostrar o objeto user no console
+  React.useEffect(() => {
+    console.log('user:', user);
+  }, [user]);
   const authUser = useAuthUser();
   // Detecta usuário logado apenas pelo hook useAuthUser
   const user = authUser ? authUser : null;
+
+  // Estado para dados do perfil na tabela users_
+  const [profile, setProfile] = useState<any>(null);
+
+  // Busca o perfil do usuário na tabela users_ após login
+  useEffect(() => {
+    async function fetchProfile() {
+      if (user && user.email) {
+        try {
+          const { supabase } = await import('../../lib/supabaseClient');
+          const { data, error } = await supabase
+            .from('users_')
+            .select('*')
+            .eq('email', user.email)
+            .single();
+          if (!error && data) {
+            setProfile(data);
+          } else {
+            setProfile(null);
+          }
+        } catch (err) {
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
+      }
+    }
+    fetchProfile();
+  }, [user]);
+  // Debug: mostrar o objeto user no console
+  React.useEffect(() => {
+    console.log('user:', user);
+  }, [user]);
   // ...existing code...
 
   // Se usar React Navigation, loga ao focar
@@ -262,17 +299,39 @@ export default function ProductCatalogScreen() {
             <Icon name="menu" size={26} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>Perpi Shop</Text>
-          <TouchableOpacity
-            style={styles.cartIconBtn}
-            onPress={() => router.push('/cart')}
-          >
-            <Icon name="shopping-cart" size={24} color="#fff" />
-            {cart.length > 0 && (
-              <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>{cart.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={styles.cartIconBtn}
+              onPress={() => router.push('/cart')}
+            >
+              <Icon name="shopping-cart" size={24} color="#fff" />
+              {cart.length > 0 && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>{cart.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.cartIconBtn, { marginLeft: 8, padding: 0, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)' }]}
+              onPress={() => router.push('/profile')}
+            >
+              {profile && profile.profile_picture_url ? (
+                <Image
+                  source={{ uri: profile.profile_picture_url }}
+                  style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: '#fff', backgroundColor: '#eee' }}
+                  resizeMode="cover"
+                />
+              ) : profile && (profile.nome || profile.email) ? (
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' }}>
+                  <Text style={{ fontWeight: 'bold', color: '#008A44', fontSize: 16 }}>
+                    {((profile.nome || profile.email || '').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0,2))}
+                  </Text>
+                </View>
+              ) : (
+                <MCIcon name="account-circle" size={28} color="#fff" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
       <View style={{ flex: 1 }}>
