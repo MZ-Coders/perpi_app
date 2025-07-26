@@ -98,9 +98,9 @@ export default function ProductDetailScreen() {
           )}
           {Platform.OS === 'web' || !SharedElement ? (
             <>
-              <Image 
-                source={{ uri: image_url }}
-                style={styles.image} 
+              <Image
+                source={image_url ? { uri: image_url } : require('../../assets/images/placeholder-Products.jpg')}
+                style={styles.image}
                 resizeMode="cover"
                 onLoadStart={() => setImageLoading(true)}
                 onLoadEnd={() => setImageLoading(false)}
@@ -112,9 +112,9 @@ export default function ProductDetailScreen() {
             </>
           ) : (
             <SharedElement id={sharedId} style={styles.image}>
-              <Image 
-                source={{ uri: image_url }}
-                style={styles.image} 
+              <Image
+                source={image_url ? { uri: image_url } : require('../../assets/images/placeholder-Products.jpg')}
+                style={styles.image}
                 resizeMode="cover"
                 onLoadStart={() => setImageLoading(true)}
                 onLoadEnd={() => setImageLoading(false)}

@@ -89,10 +89,16 @@ export default function FavoritesScreen() {
         >
           <View style={styles.imageContainer}>
             {Platform.OS === 'web' || !SharedElement ? (
-              <Image source={{ uri: item.products?.image_url }} style={styles.gridImage} />
+              <Image
+                source={item.products?.image_url ? { uri: item.products?.image_url } : require('../../assets/images/placeholder-Products.jpg')}
+                style={styles.gridImage}
+              />
             ) : (
               <SharedElement id={sharedId} style={styles.gridImage} onNode={() => {}}>
-                <Image source={{ uri: item.products?.image_url }} style={styles.gridImage} />
+                <Image
+                  source={item.products?.image_url ? { uri: item.products?.image_url } : require('../../assets/images/placeholder-Products.jpg')}
+                  style={styles.gridImage}
+                />
               </SharedElement>
             )}
           </View>
@@ -115,10 +121,16 @@ export default function FavoritesScreen() {
       >
         <View style={styles.listImageContainer}>
           {Platform.OS === 'web' || !SharedElement ? (
-            <Image source={{ uri: item.products?.image_url }} style={styles.listImage} />
+            <Image
+              source={item.products?.image_url ? { uri: item.products?.image_url } : require('../../assets/images/placeholder-Products.jpg')}
+              style={styles.listImage}
+            />
           ) : (
             <SharedElement id={sharedId} style={styles.listImage} onNode={() => {}}>
-              <Image source={{ uri: item.products?.image_url }} style={styles.listImage} />
+              <Image
+                source={item.products?.image_url ? { uri: item.products?.image_url } : require('../../assets/images/placeholder-Products.jpg')}
+                style={styles.listImage}
+              />
             </SharedElement>
           )}
         </View>
