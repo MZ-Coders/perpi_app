@@ -313,7 +313,13 @@ export default function ProductCatalogScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.cartIconBtn, { marginLeft: 8, padding: 0, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)' }]}
-              onPress={() => router.push('/profile')}
+              onPress={() => {
+                if (user) {
+                  router.push('/profile');
+                } else {
+                  router.push('/login');
+                }
+              }}
             >
               {profile && profile.profile_picture_url ? (
                 <Image
