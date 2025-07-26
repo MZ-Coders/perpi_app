@@ -223,14 +223,12 @@ export default function ProductCatalogScreen() {
           <View style={styles.gridCardContent}>
             <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.gridPrice}>MZN {item.price}</Text>
-            {user && (
-              <TouchableOpacity
-                style={[styles.gridCartBtn, inCart && styles.gridCartBtnInCart]}
-                onPress={() => handleToggleCart(item)}
-              >
-                <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.gridCartBtn, inCart && styles.gridCartBtnInCart]}
+              onPress={() => handleToggleCart(item)}
+            >
+              <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       );
@@ -266,15 +264,13 @@ export default function ProductCatalogScreen() {
                 )}
               </View>
               <Text style={styles.listPrice}>MZN {item.price}</Text>
-              {user && (
-                <TouchableOpacity
-                  style={[styles.listCartBtn, inCart && styles.listCartBtnInCart]}
-                  onPress={() => handleToggleCart(item)}
-                >
-                  <Icon name={inCart ? 'check' : 'shopping-cart'} size={16} color="#fff" />
-                  <Text style={styles.listCartBtnText}>{inCart ? 'No carrinho' : 'Adicionar ao carrinho'}</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={[styles.listCartBtn, inCart && styles.listCartBtnInCart]}
+                onPress={() => handleToggleCart(item)}
+              >
+                <Icon name={inCart ? 'check' : 'shopping-cart'} size={16} color="#fff" />
+                <Text style={styles.listCartBtnText}>{inCart ? 'No carrinho' : 'Adicionar ao carrinho'}</Text>
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
         );

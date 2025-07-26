@@ -1,18 +1,22 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View, DeviceEventEmitter } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthUser } from '../hooks/useAuthUser';
 
 export default function CartScreen() {
+  const router = useRouter();
   const authUser = useAuthUser();
   const user = authUser ? authUser : null;
   const USER_ID = user?.id;
   // TODO: Replace with real address selection
   const DELIVERY_ADDRESS_ID = 1;
+
+  // Estado do carrinho
+  const [cartItems, setCartItems] = useState<any[]>([]);
 
   async function handleRealPurchase() {
     if (!USER_ID) {
@@ -85,7 +89,6 @@ export default function CartScreen() {
       // Erro ao realizar compra
     }
   }
-  const [cartItems, setCartItems] = useState<any[]>([]);
 
   // Sempre que a tela ganhar foco, recarrega o carrinho do AsyncStorage
   useFocusEffect(
@@ -109,28 +112,32 @@ export default function CartScreen() {
     setCartItems(newCart);
     AsyncStorage.setItem('cart', JSON.stringify(newCart));
     // Dispara evento para atualização global do carrinho
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('cartUpdated'));
-    }
+    DeviceEventEmitter.emit('cartUpdated');
   }
 
   function handleRemoveItem(itemId: number) {
-    const newCart = cartItems.filter(item => item.id !== itemId);
+    const newCart = cartItems.filter(item => item && item.id !== itemId);
     updateCart(newCart);
   }
 
   function handleChangeQty(itemId: number, delta: number, currentQty: number) {
     const newCart = cartItems.map(item => {
-      if (item.id === itemId) {
-        const newQty = currentQty + delta;
-        return newQty > 0 ? { ...item, quantity: newQty } : null;
+      if (item && item.id === itemId) {
+        let qty = typeof item.quantity === 'number' ? item.quantity : 1;
+        const newQty = qty + delta;
+        if (newQty > 0) {
+          return { ...item, quantity: newQty };
+        } else {
+          return null;
+        }
       }
       return item;
     }).filter(item => item && item.quantity > 0);
     updateCart(newCart);
   }
 
-  const cartTotal = cartItems.reduce((sum, item) => sum + (item.product?.price || 0) * item.quantity, 0);
+  // Corrigir cálculo do total do carrinho
+  const cartTotal = cartItems.reduce((sum: number, item: any) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
 
   return (
     <View style={styles.container}>
@@ -143,7 +150,10 @@ export default function CartScreen() {
           keyExtractor={item => item.id.toString()}
           renderItem={({ item }) => (
             <View style={styles.cartItemRow}>
-              <Image source={{ uri: item.image_url }} style={styles.cartItemImg} />
+              <Image
+                source={item.image_url ? { uri: item.image_url } : require('../assets/images/placeholder-Products.jpg')}
+                style={styles.cartItemImg}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.priceCart}>MZN {item.price}</Text>
@@ -171,13 +181,22 @@ export default function CartScreen() {
           MZN {cartItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2)}
         </Text>
       </View>
-      <TouchableOpacity
-        style={styles.buyBtn}
-        onPress={handleRealPurchase}
-        disabled={cartItems.length === 0}
-      >
-        <Text style={styles.buyBtnText}>Comprar</Text>
-      </TouchableOpacity>
+      {user ? (
+        <TouchableOpacity
+          style={styles.buyBtn}
+          onPress={handleRealPurchase}
+          disabled={cartItems.length === 0}
+        >
+          <Text style={styles.buyBtnText}>Comprar</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={styles.buyBtn}
+          onPress={() => router.push('/login')}
+        >
+          <Text style={styles.buyBtnText}>Fazer login para comprar</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -200,5 +219,5 @@ const styles = StyleSheet.create({
   cartTotalLabel: { fontSize: 18, fontWeight: 'bold', color: '#008A44' },
   cartTotalValue: { fontSize: 20, fontWeight: 'bold', color: '#FF7A00' },
   buyBtn: { marginTop: 28, backgroundColor: '#FF7A00', borderRadius: 8, paddingVertical: 16, alignItems: 'center', elevation: 1 },
-  buyBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  buyBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 }
 });

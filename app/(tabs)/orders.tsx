@@ -138,17 +138,11 @@ export default function OrdersScreen() {
             {orderItems[item.id].map((orderItem: any, index: number) => (
               <View key={`${orderItem.id}-${index}`} style={styles.orderItemRow}>
                 <View style={styles.itemImageContainer}>
-                  {orderItem.product?.image_url ? (
-                    <Image 
-                      source={{ uri: orderItem.product.image_url }} 
-                      style={styles.itemImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={[styles.itemImage, styles.imagePlaceholder]}>
-                      <Text style={styles.imagePlaceholderText}>📦</Text>
-                    </View>
-                  )}
+                  <Image
+                    source={orderItem.product?.image_url ? { uri: orderItem.product.image_url } : require('../../assets/images/placeholder-Products.jpg')}
+                    style={styles.itemImage}
+                    resizeMode="cover"
+                  />
                 </View>
                 
                 <View style={styles.itemDetails}>
