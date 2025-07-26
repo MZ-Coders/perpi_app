@@ -109,8 +109,9 @@ export default function ProductDetailScreen() {
           )
         }
         headerBackgroundColor={{ light: '#F8F9FA', dark: '#1A1A1A' }}
-        contentContainerStyle={{ padding: 0, paddingHorizontal: 0, paddingTop: 0 }}
       >
+
+      </ParallaxScrollView>
         <View style={styles.infoContainer}>
           <View style={styles.headerInfo}>
             <View style={styles.nameContainer}>
@@ -181,7 +182,6 @@ export default function ProductDetailScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
-      </ParallaxScrollView>
     </View>
   );
 }
@@ -274,18 +274,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: 0, // Ajustado para sobrepor ligeiramente a imagem
+    marginTop: -70, // Ajustado para sobrepor ligeiramente a imagem
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
-    zIndex: 999,
-    padding: 0,
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    width: '100%',
-    alignSelf: 'stretch',
+    elevation: 0,
+    zIndex: 99999,
+    padding: 20,
+    // width: '100%',
+    // alignSelf: 'stretch',
   },
   headerInfo: {
     flexDirection: 'row',
