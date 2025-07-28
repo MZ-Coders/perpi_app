@@ -65,7 +65,7 @@ export default function TabLayout() {
         // Renderiza manualmente os itens do Drawer para garantir apenas labels em português
         const { navigation, state } = props;
         const screens = [
-          { key: 'index', label: 'Catálogo', icon: 'home' },
+          { key: 'index', label: 'Productos', icon: 'home' },
           ...(user ? [
             { key: 'orders', label: 'Compras', icon: 'clipboard' },
             { key: 'favorites', label: 'Favoritos', icon: 'heart' },

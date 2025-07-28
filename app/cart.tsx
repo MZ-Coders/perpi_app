@@ -151,22 +151,22 @@ export default function CartScreen() {
             <View style={styles.cartItemRow}>
               <Image
                 source={item.image_url ? { uri: item.image_url } : require('../assets/images/placeholder-Products.jpg')}
-                style={styles.cartItemImg}
+                style={styles.cartItemImgLarge}
               />
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.priceCart}>MZN {item.price}</Text>
                 <View style={styles.qtyRow}>
-                  <TouchableOpacity style={styles.qtyBtn} onPressOut={() => handleChangeQty(item.id, -1, item.quantity || 1)}>
-                    <Text style={styles.qtyBtnText}>-</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.qtyText}>{item.quantity || 1}</Text>
-                  <TouchableOpacity style={styles.qtyBtn} onPressOut={() => handleChangeQty(item.id, 1, item.quantity || 1)}>
-                    <Text style={styles.qtyBtnText}>+</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.removeBtn} onPressOut={() => handleRemoveItem(item.id)}>
-                    <Icon name="trash-2" size={18} style={styles.removeBtnIcon} />
-                  </TouchableOpacity>
+                <TouchableOpacity style={styles.qtyBtnLarge} onPressOut={() => handleChangeQty(item.id, -1, item.quantity || 1)}>
+                  <Text style={styles.qtyBtnTextLarge}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.qtyTextLarge}>{item.quantity || 1}</Text>
+                <TouchableOpacity style={styles.qtyBtnLarge} onPressOut={() => handleChangeQty(item.id, 1, item.quantity || 1)}>
+                  <Text style={styles.qtyBtnTextLarge}>+</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.removeBtnLarge} onPressOut={() => handleRemoveItem(item.id)}>
+                  <Icon name="trash-2" size={28} style={styles.removeBtnIconLarge} />
+                </TouchableOpacity>
                 </View>
               </View>
             </View>
@@ -206,14 +206,20 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: 'center', marginVertical: 24, color: '#5C5C5C', fontSize: 16 },
   cartItemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   cartItemImg: { width: 48, height: 48, borderRadius: 8, marginRight: 14, backgroundColor: '#FDFDFB' },
+  cartItemImgLarge: { width: 64, height: 64, borderRadius: 12, marginRight: 18, backgroundColor: '#FDFDFB' },
   name: { fontWeight: 'bold', fontSize: 15, marginBottom: 2, color: '#1A1A1A' },
   priceCart: { color: '#008A44', fontWeight: 'bold', fontSize: 15, marginBottom: 2 },
   qtyRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   qtyBtn: { backgroundColor: '#E0E0E0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, marginHorizontal: 2 },
+  qtyBtnLarge: { backgroundColor: '#E0E0E0', borderRadius: 12, paddingHorizontal: 18, paddingVertical: 8, marginHorizontal: 4, minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   qtyBtnText: { fontSize: 18, fontWeight: 'bold', color: '#008A44' },
+  qtyBtnTextLarge: { fontSize: 26, fontWeight: 'bold', color: '#008A44' },
   qtyText: { fontSize: 16, fontWeight: 'bold', marginHorizontal: 8, color: '#1A1A1A' },
+  qtyTextLarge: { fontSize: 22, fontWeight: 'bold', marginHorizontal: 12, color: '#1A1A1A' },
   removeBtn: { marginLeft: 10, backgroundColor: '#FF7A00', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 2, justifyContent: 'center', alignItems: 'center' },
+  removeBtnLarge: { marginLeft: 14, backgroundColor: '#FF7A00', borderRadius: 14, paddingHorizontal: 18, paddingVertical: 8, justifyContent: 'center', alignItems: 'center', minWidth: 48, minHeight: 48 },
   removeBtnIcon: { color: '#fff', fontSize: 18 },
+  removeBtnIconLarge: { color: '#fff', fontSize: 28 },
   cartTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, paddingTop: 10, borderTopWidth: 1, borderColor: '#E0E0E0' },
   cartTotalLabel: { fontSize: 18, fontWeight: 'bold', color: '#008A44' },
   cartTotalValue: { fontSize: 20, fontWeight: 'bold', color: '#FF7A00' },

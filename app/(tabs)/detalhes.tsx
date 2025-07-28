@@ -30,6 +30,8 @@ export default function ProductDetailScreen() {
   const [imageLoading, setImageLoading] = useState(true);
   // Local cart state
   const [cart, setCart] = useState<any[]>([]);
+  // Quantidade selecionada
+  const [qty, setQty] = useState(1);
   // Carrega carrinho do AsyncStorage ao montar
   React.useEffect(() => {
     AsyncStorage.getItem('cart').then(data => {
@@ -66,9 +68,9 @@ export default function ProductDetailScreen() {
     let newCart;
     const exists = cart.find(item => item.id === params.id);
     if (exists) {
-      newCart = cart.map(item => item.id === params.id ? { ...item, quantity: item.quantity + 1 } : item);
+      newCart = cart.map(item => item.id === params.id ? { ...item, quantity: item.quantity + qty } : item);
     } else {
-      newCart = [...cart, { id: params.id, name, price, image_url, quantity: 1 }];
+      newCart = [...cart, { id: params.id, name, price, image_url, quantity: qty }];
     }
     setCart(newCart);
     AsyncStorage.setItem('cart', JSON.stringify(newCart));
@@ -164,23 +166,42 @@ export default function ProductDetailScreen() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity 
-            style={[styles.addToCartButton, stock_quantity <= 0 && styles.disabledButton]}
-            disabled={stock_quantity <= 0}
-            onPress={handleAddToCart}
-          >
-            <LinearGradient
-              colors={stock_quantity > 0 ? ['#FF7A00', '#FF9A40'] : ['#CCCCCC', '#AAAAAA']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.addToCartGradient}
+          {/* Linha com quantidade e botão de carrinho */}
+          <View style={styles.qtyCartRow}>
+            <View style={styles.qtyControlsRow}>
+              <TouchableOpacity
+                style={styles.qtyBtn}
+                onPress={() => setQty(q => Math.max(1, q - 1))}
+                disabled={qty <= 1}
+              >
+                <Text style={styles.qtyBtnText}>-</Text>
+              </TouchableOpacity>
+              <Text style={styles.qtyText}>{qty}</Text>
+              <TouchableOpacity
+                style={styles.qtyBtn}
+                onPress={() => setQty(q => Math.min(stock_quantity, q + 1))}
+                disabled={qty >= stock_quantity}
+              >
+                <Text style={styles.qtyBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity 
+              style={[styles.addToCartButtonInline, stock_quantity <= 0 && styles.disabledButton]}
+              disabled={stock_quantity <= 0}
+              onPress={handleAddToCart}
             >
-              <Icon name="shopping-cart" size={20} color="#fff" style={{marginRight: 8}} />
-              <Text style={styles.addToCartText}>
-                {stock_quantity > 0 ? (added ? 'Adicionado!' : 'Adicionar ao Carrinho') : 'Produto Esgotado'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={stock_quantity > 0 ? ['#FF7A00', '#FF9A40'] : ['#CCCCCC', '#AAAAAA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.addToCartGradientInline}
+              >
+                <Text style={styles.addToCartText}>
+                  {stock_quantity > 0 ? (added ? 'Adicionado!' : 'Adicionar ao Carrinho') : 'Produto Esgotado'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
     </View>
   );
@@ -386,6 +407,68 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  qtyCartRow: {
+    flexDirection: 'row',
+    alignItems: 'center', // já estava, mas mantido para clareza
+    justifyContent: 'center', // centraliza horizontalmente
+    gap: 12,
+    backgroundColor: '#111',
+    borderRadius: 18,
+    padding: 8,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  qtyControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Removido marginBottom/marginTop para melhor alinhamento vertical
+  },
+  qtyBtn: {
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginHorizontal: 4,
+    minWidth: 32,
+    minHeight: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qtyBtnText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111',
+  },
+  qtyText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginHorizontal: 8,
+    color: '#fff',
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  addToCartButtonInline: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#FF7A00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    minWidth: 120,
+    marginLeft: 12,
+    height: 40,
+    justifyContent: 'center',
+  },
+  addToCartGradientInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 0,
+    paddingHorizontal: 12,
+    height: 40,
   },
   disabledButton: {
     opacity: 0.8,
