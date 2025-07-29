@@ -30,20 +30,22 @@ export default function ProductDetailScreen() {
   const [imageLoading, setImageLoading] = useState(true);
   // Local cart state
   const [cart, setCart] = useState<any[]>([]);
-  // Quantidade selecionada
+  // Quantidade selecionada (default 1, mas se já existe no carrinho, usa a do carrinho)
   const [qty, setQty] = useState(1);
   // Carrega carrinho do AsyncStorage ao montar
   React.useEffect(() => {
     AsyncStorage.getItem('cart').then(data => {
       if (data) {
         try {
-          setCart(JSON.parse(data));
-          
-          
+          const parsed = JSON.parse(data);
+          setCart(parsed);
+          // Se o produto já está no carrinho, setar a quantidade inicial igual à do carrinho
+          const exists = parsed.find((item: any) => item.id === params.id);
+          if (exists) setQty(exists.quantity);
         } catch {}
       }
     });
-  }, []);
+  }, [params.id]);
   const [added, setAdded] = useState(false);
 
   // Extrair e converter parâmetros para os tipos corretos
@@ -64,23 +66,32 @@ export default function ProductDetailScreen() {
   const category_id = params.category_id ? String(params.category_id) : '';
   const category_name = params.category_name ? String(params.category_name) : '';
 
-  // Adiciona ao carrinho offline
+  // Adiciona ao carrinho (apenas se não existe)
   function handleAddToCart() {
     if (stock_quantity <= 0) return;
-    let newCart;
     const exists = cart.find(item => item.id === params.id);
-    if (exists) {
-      newCart = cart.map(item => item.id === params.id ? { ...item, quantity: item.quantity + qty } : item);
-      console.log(`Atualizando ${exists.name} no carrinho, nova quantidade: ${exists.quantity + qty}`);
-      
-    } else {
-      newCart = [...cart, { id: params.id, name, price, image_url, quantity: qty }];
-    }
+    if (exists) return; // Não adiciona se já existe
+    const newCart = [...cart, { id: params.id, name, price, image_url, quantity: qty }];
     setCart(newCart);
     AsyncStorage.setItem('cart', JSON.stringify(newCart));
     setAdded(true);
     setTimeout(() => setAdded(false), 1200);
   }
+
+  // Atualiza quantidade do produto no carrinho
+  function handleUpdateQty(newQty: number) {
+    if (newQty < 1 || newQty > stock_quantity) return;
+    setQty(newQty);
+    const exists = cart.find(item => item.id === params.id);
+    if (exists) {
+      const newCart = cart.map(item => item.id === params.id ? { ...item, quantity: newQty } : item);
+      setCart(newCart);
+      AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    }
+  }
+
+  // Verifica se o produto já está no carrinho
+  const productInCart = cart.find(item => item.id === params.id);
 
   return (
     <View style={styles.mainContainer}>
@@ -170,12 +181,18 @@ export default function ProductDetailScreen() {
               </Text>
             </View>
           </View>
-          {/* Linha com quantidade e botão de carrinho */}
+          {/* Linha com quantidade e controles de carrinho */}
           <View style={styles.qtyCartRow}>
             <View style={styles.qtyControlsRow}>
               <TouchableOpacity
                 style={styles.qtyBtn}
-                onPress={() => setQty(q => Math.max(1, q - 1))}
+                onPress={() => {
+                  if (productInCart) {
+                    handleUpdateQty(qty - 1);
+                  } else {
+                    setQty(q => Math.max(1, q - 1));
+                  }
+                }}
                 disabled={qty <= 1}
               >
                 <Text style={styles.qtyBtnText}>-</Text>
@@ -183,28 +200,37 @@ export default function ProductDetailScreen() {
               <Text style={styles.qtyText}>{qty}</Text>
               <TouchableOpacity
                 style={styles.qtyBtn}
-                onPress={() => setQty(q => Math.min(stock_quantity, q + 1))}
+                onPress={() => {
+                  if (productInCart) {
+                    handleUpdateQty(qty + 1);
+                  } else {
+                    setQty(q => Math.min(stock_quantity, q + 1));
+                  }
+                }}
                 disabled={qty >= stock_quantity}
               >
                 <Text style={styles.qtyBtnText}>+</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              style={[styles.addToCartButtonInline, stock_quantity <= 0 && styles.disabledButton]}
-              disabled={stock_quantity <= 0}
-              onPress={handleAddToCart}
-            >
-              <LinearGradient
-                colors={stock_quantity > 0 ? ['#FF7A00', '#FF9A40'] : ['#CCCCCC', '#AAAAAA']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.addToCartGradientInline}
+            {/* Se não está no carrinho, mostra botão Adicionar. Se já está, não mostra botão */}
+            {!productInCart && (
+              <TouchableOpacity 
+                style={[styles.addToCartButtonInline, stock_quantity <= 0 && styles.disabledButton]}
+                disabled={stock_quantity <= 0}
+                onPress={handleAddToCart}
               >
-                <Text style={styles.addToCartText}>
-                  {stock_quantity > 0 ? (added ? 'Adicionado!' : 'Adicionar ao Carrinho') : 'Produto Esgotado'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
+                <LinearGradient
+                  colors={stock_quantity > 0 ? ['#FF7A00', '#FF9A40'] : ['#CCCCCC', '#AAAAAA']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.addToCartGradientInline}
+                >
+                  <Text style={styles.addToCartText}>
+                    {stock_quantity > 0 ? (added ? 'Adicionado!' : 'Adicionar ao Carrinho') : 'Produto Esgotado'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
     </View>
