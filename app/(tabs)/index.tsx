@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
+const FAVORITES_ID = '__favoritos__';
 
 
 let SharedElement: any = null;
@@ -264,10 +265,14 @@ export default function ProductCatalogScreen() {
     fetchData();
   }, []);
 
-  // Filtra produtos por categoria e busca
+  // Filtra produtos por categoria, favoritos e busca
   React.useEffect(() => {
     let filteredList = products;
-    if (selectedCategory) {
+    if (selectedCategory === FAVORITES_ID) {
+      // Filtra apenas favoritos
+      const favIds = favorites.map(f => Number(f.product_id));
+      filteredList = filteredList.filter(p => favIds.includes(Number(p.id)));
+    } else if (selectedCategory) {
       filteredList = filteredList.filter(p => p.category_id === selectedCategory);
     }
     if (search) {
@@ -277,7 +282,7 @@ export default function ProductCatalogScreen() {
       );
     }
     setFiltered(filteredList);
-  }, [products, selectedCategory, search]);
+  }, [products, selectedCategory, search, favorites]);
 
   function renderProduct({ item }: { item: any }) {
     const sharedId = `product-image-${item.id}`;

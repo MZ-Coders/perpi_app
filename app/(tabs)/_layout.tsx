@@ -68,10 +68,10 @@ export default function TabLayout() {
           { key: 'index', label: 'Productos', icon: 'home' },
           ...(user ? [
             { key: 'orders', label: 'Compras', icon: 'clipboard' },
-            { key: 'favorites', label: 'Favoritos', icon: 'heart' },
+            // { key: 'favorites', label: 'Favoritos', icon: 'heart' },
             { key: 'profile', label: 'Perfil', icon: 'user' },
           ] : []),
-          { key: 'explore', label: 'Explorar', icon: 'search' },
+          // { key: 'explore', label: 'Explorar', icon: 'search' },
         ];
         return (
           <DrawerContentScrollView {...props}>
@@ -148,14 +148,14 @@ export default function TabLayout() {
           />
         </>
       ) : null}
-      <Drawer.Screen
+      {/* <Drawer.Screen
         name="explore"
         options={{
           title: 'Explore',
           drawerLabel: 'Explorar',
           headerShown: false,
         }}
-      />
+      /> */}
       <Drawer.Screen
         name="detalhes"
         options={{

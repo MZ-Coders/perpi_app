@@ -13,6 +13,9 @@ interface CategoryFilterProps {
   onSelect: (id: string | null) => void;
 }
 
+// Para favoritos, usamos o id especial '__favoritos__'
+const FAVORITES_ID = '__favoritos__';
+
 export default function CategoryFilter({ categories, selectedCategory, onSelect }: CategoryFilterProps) {
   const getInitials = (name: string) => {
     return name
@@ -64,11 +67,40 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
           </Text>
         </TouchableOpacity>
 
+        {/* Botão "Favoritos" */}
+        <TouchableOpacity
+          style={[
+            styles.categoryItem,
+            selectedCategory === FAVORITES_ID && styles.categoryItemActive
+          ]}
+          onPress={() => onSelect(selectedCategory === FAVORITES_ID ? null : FAVORITES_ID)}
+          activeOpacity={0.7}
+        >
+          <View style={[
+            styles.categoryIcon,
+            selectedCategory === FAVORITES_ID && styles.categoryIconActive,
+            { backgroundColor: '#FFF3E0', borderColor: '#FF7A00' }
+          ]}>
+            <Text style={[
+              styles.initialsText,
+              selectedCategory === FAVORITES_ID && styles.initialsTextActive,
+              { color: '#FF7A00' }
+            ]}>
+              ♥
+            </Text>
+          </View>
+          <Text style={[
+            styles.categoryName,
+            selectedCategory === FAVORITES_ID && styles.categoryNameActive
+          ]}>
+            Favoritos
+          </Text>
+        </TouchableOpacity>
+
         {/* Categorias */}
         {categories.map((category: Category) => {
           const isSelected = selectedCategory === category.id;
           const initials = getInitials(category.name);
-          
           return (
             <TouchableOpacity
               key={category.id}
