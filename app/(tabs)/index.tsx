@@ -10,6 +10,7 @@ import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, Text
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
 
+
 let SharedElement: any = null;
 if (Platform.OS !== 'web') {
   SharedElement = require('react-native-shared-element').SharedElement;
@@ -76,6 +77,7 @@ export default function ProductCatalogScreen() {
   const [viewType, setViewType] = useState<'grid' | 'list'>('list');
   const [loading, setLoading] = useState(false);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   const [cart, setCart] = useState<any[]>([]);
 
   // Animated value para mostrar/esconder o header de busca fixo
@@ -159,15 +161,77 @@ export default function ProductCatalogScreen() {
   // Adiciona ou remove favorito
   function handleToggleFavorite(productId: number) {
     setFavorites(prev => {
-      const exists = prev.find(f => f.product_id === productId);
+      const pid = Number(productId);
+      const exists = prev.find(f => Number(f.product_id) === pid);
+      let updated;
       if (exists) {
-        return prev.filter(f => f.product_id !== productId);
+        updated = prev.filter(f => Number(f.product_id) !== pid);
+        console.log('[Favoritos] Removendo produto', pid);
       } else {
-        return [...prev, { id: Date.now(), product_id: productId }];
+        updated = [...prev, { id: Date.now(), product_id: pid }];
+        console.log('[Favoritos] Adicionando produto', pid);
       }
+      // Salva no AsyncStorage, mas não faz setFavorites novamente
+      AsyncStorage.setItem('favorites', JSON.stringify(updated)).then(() => {
+        console.log('[Favoritos] Persistido no AsyncStorage:', updated);
+      });
+      return updated;
     });
   }
-  // ...existing code...
+
+  // Carrega favoritos do AsyncStorage/localStorage ao montar (com controle de carregamento)
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      const stored = window.localStorage.getItem('favorites');
+      console.log('[Favoritos][WEB] Valor bruto localStorage:', stored);
+      try {
+        const parsed = stored ? JSON.parse(stored) : [];
+        const normalized = Array.isArray(parsed)
+          ? parsed.map(f => ({ ...f, product_id: Number(f.product_id) }))
+          : [];
+        setFavorites(normalized);
+        setFavoritesLoaded(true);
+        console.log('[Favoritos][WEB] Restaurado do localStorage:', normalized);
+      } catch {
+        setFavorites([]);
+        setFavoritesLoaded(true);
+        console.log('[Favoritos][WEB] Erro ao restaurar do localStorage, setando []');
+      }
+    } else {
+      AsyncStorage.getItem('favorites').then(stored => {
+        console.log('[Favoritos] Valor bruto AsyncStorage:', stored);
+        try {
+          const parsed = stored ? JSON.parse(stored) : [];
+          // Garante que todos os product_id sejam number
+          const normalized = Array.isArray(parsed)
+            ? parsed.map(f => ({ ...f, product_id: Number(f.product_id) }))
+            : [];
+          setFavorites(normalized);
+          setFavoritesLoaded(true);
+          console.log('[Favoritos] Restaurado do AsyncStorage:', normalized);
+        } catch {
+          setFavorites([]);
+          setFavoritesLoaded(true);
+          console.log('[Favoritos] Erro ao restaurar do AsyncStorage, setando []');
+        }
+      });
+    }
+  }, []);
+
+  // Salva favoritos no AsyncStorage/localStorage sempre que mudar, mas só após restaurar
+  useEffect(() => {
+    if (!favoritesLoaded) return;
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('favorites', JSON.stringify(favorites));
+      console.log('[Favoritos][WEB] Estado atualizado e persistido no localStorage:', favorites);
+    } else {
+      AsyncStorage.setItem('favorites', JSON.stringify(favorites)).then(() => {
+        console.log('[Favoritos] Estado atualizado e persistido:', favorites);
+      });
+    }
+  }, [favorites, favoritesLoaded]);
+
+
 
   // Busca produtos e categorias do Supabase
   React.useEffect(() => {
@@ -217,7 +281,7 @@ export default function ProductCatalogScreen() {
 
   function renderProduct({ item }: { item: any }) {
     const sharedId = `product-image-${item.id}`;
-    const isFav = Array.isArray(favorites) ? favorites.some((f: Favorite) => f.product_id === item.id) : false;
+    const isFav = Array.isArray(favorites) ? favorites.some((f: Favorite) => Number(f.product_id) === Number(item.id)) : false;
     const inCart = Array.isArray(cart) ? cart.some((p: any) => p.id === item.id) : false;
     const categoryObj = Array.isArray(categories) ? categories.find((c: any) => c.id === item.category_id) : null;
     const category_name = categoryObj ? categoryObj.name : '';
@@ -248,9 +312,12 @@ export default function ProductCatalogScreen() {
               </SharedElement>
             )}
             {user && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.favoriteBtn}
-                onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
+                onPressIn={() => {
+                  console.log('Favorito clicado', item.id);
+                  handleToggleFavorite(item.id);
+                }}
               >
                 {isFav ? (
                   <MCIcon name="heart" size={20} color="#FF7A00" />
@@ -300,9 +367,12 @@ export default function ProductCatalogScreen() {
         <View style={{ flex: 1, height: 100, justifyContent: 'space-between', position: 'relative' }}>
           {/* Favorito no topo à direita */}
           {user && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={{ position: 'absolute', top: 0, right: 0, zIndex: 2, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 16, padding: 6 }}
-              onPress={e => { e.stopPropagation(); handleToggleFavorite(item.id); }}
+              onPressIn={() => {
+                console.log('Favorito clicado', item.id);
+                handleToggleFavorite(item.id);
+              }}
             >
               {isFav ? (
                 <MCIcon name="heart" size={20} color="#FF7A00" />

@@ -38,6 +38,8 @@ export default function ProductDetailScreen() {
       if (data) {
         try {
           setCart(JSON.parse(data));
+          
+          
         } catch {}
       }
     });
@@ -69,6 +71,8 @@ export default function ProductDetailScreen() {
     const exists = cart.find(item => item.id === params.id);
     if (exists) {
       newCart = cart.map(item => item.id === params.id ? { ...item, quantity: item.quantity + qty } : item);
+      console.log(`Atualizando ${exists.name} no carrinho, nova quantidade: ${exists.quantity + qty}`);
+      
     } else {
       newCart = [...cart, { id: params.id, name, price, image_url, quantity: qty }];
     }
