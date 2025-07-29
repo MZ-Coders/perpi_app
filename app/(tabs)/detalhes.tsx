@@ -9,13 +9,12 @@
 //   headerLeft: () => null // Remove o botão padrão do drawer
 // };
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { DeviceEventEmitter, Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
 
@@ -34,29 +33,54 @@ export default function ProductDetailScreen() {
   const [cart, setCart] = useState<any[]>([]);
   // Quantidade selecionada (default 1, mas se já existe no carrinho, usa a do carrinho)
   const [qty, setQty] = useState(1);
-  // Atualiza status do item ao entrar na tela (garante sempre o estado mais recente do carrinho)
-  useFocusEffect(
-    React.useCallback(() => {
-      AsyncStorage.getItem('cart').then(data => {
-        if (data) {
-          try {
-            const parsed = JSON.parse(data);
-            setCart(parsed);
-            // Se o produto já está no carrinho, setar a quantidade inicial igual à do carrinho
-            const exists = parsed.find((item: any) => item.id === params.id);
-            if (exists) setQty(exists.quantity);
-            else setQty(1);
-          } catch {
-            setCart([]);
+  // Função para recarregar o carrinho do AsyncStorage
+  const reloadCart = React.useCallback(() => {
+    AsyncStorage.getItem('cart').then(data => {
+      if (data) {
+        try {
+          const parsed = JSON.parse(data);
+          // Normaliza todos os ids para número
+          const normalized = Array.isArray(parsed) ? parsed.map((item: any) => ({ ...item, id: Number(item.id) })) : [];
+          console.log('[detalhes] reloadCart: cart from storage', normalized);
+          setCart(normalized);
+          // Se o produto já está no carrinho, setar a quantidade inicial igual à do carrinho
+          const exists = normalized.find((item: any) => Number(item.id) === Number(params.id));
+          if (exists) {
+            setQty(exists.quantity);
+            console.log('[detalhes] reloadCart: item encontrado no carrinho', exists);
+          } else {
             setQty(1);
+            console.log('[detalhes] reloadCart: item NÃO encontrado no carrinho');
           }
-        } else {
+        } catch (e) {
           setCart([]);
           setQty(1);
+          console.log('[detalhes] reloadCart: erro ao parsear cart', e);
         }
-      });
-    }, [params.id])
-  );
+      } else {
+        setCart([]);
+        setQty(1);
+        console.log('[detalhes] reloadCart: cart vazio');
+      }
+    });
+  }, [params.id]);
+
+  // Atualiza status do item ao entrar na tela
+  useFocusEffect(reloadCart);
+
+  // Escuta eventos de atualização global do carrinho
+  React.useEffect(() => {
+    function onCartUpdated() {
+      reloadCart();
+    }
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.addEventListener('cartUpdated', onCartUpdated);
+      return () => window.removeEventListener('cartUpdated', onCartUpdated);
+    } else {
+      const sub = DeviceEventEmitter.addListener('cartUpdated', onCartUpdated);
+      return () => sub.remove();
+    }
+  }, [reloadCart]);
   const [added, setAdded] = useState(false);
 
   // Extrair e converter parâmetros para os tipos corretos
@@ -78,14 +102,18 @@ export default function ProductDetailScreen() {
   const category_name = params.category_name ? String(params.category_name) : '';
 
   // Adiciona ao carrinho (apenas se não existe)
-  function handleAddToCart() {
-    if (stock_quantity <= 0) return;
-    const exists = cart.find(item => item.id === params.id);
-    if (exists) return; // Não adiciona se já existe
-    const newCart = [...cart, { id: params.id, name, price, image_url, quantity: qty }];
+  async function handleAddToCart() {
+    await reloadCart(); // Garante estado mais recente
+    const exists = cart.find(item => Number(item.id) === Number(params.id));
+    console.log('[detalhes] handleAddToCart: cart antes', cart);
+    if (stock_quantity <= 0 || exists) {
+      console.log('[detalhes] handleAddToCart: não adicionou, já existe ou sem estoque');
+      return;
+    }
+    const newCart = [...cart, { id: Number(params.id), name, price, image_url, quantity: qty }];
+    await AsyncStorage.setItem('cart', JSON.stringify(newCart));
     setCart(newCart);
-    AsyncStorage.setItem('cart', JSON.stringify(newCart));
-    // Dispara evento para atualização global do carrinho
+    console.log('[detalhes] handleAddToCart: cart depois', newCart);
     if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       window.dispatchEvent(new Event('cartUpdated'));
     } else {
@@ -96,11 +124,13 @@ export default function ProductDetailScreen() {
   }
 
   // Remove do carrinho
-  function handleRemoveFromCart() {
-    const newCart = cart.filter(item => item.id !== params.id);
+  async function handleRemoveFromCart() {
+    await reloadCart();
+    console.log('[detalhes] handleRemoveFromCart: cart antes', cart);
+    const newCart = cart.filter(item => Number(item.id) !== Number(params.id));
+    await AsyncStorage.setItem('cart', JSON.stringify(newCart));
     setCart(newCart);
-    AsyncStorage.setItem('cart', JSON.stringify(newCart));
-    // Dispara evento para atualização global do carrinho
+    console.log('[detalhes] handleRemoveFromCart: cart depois', newCart);
     if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       window.dispatchEvent(new Event('cartUpdated'));
     } else {
@@ -109,25 +139,31 @@ export default function ProductDetailScreen() {
   }
 
   // Atualiza quantidade do produto no carrinho
-  function handleUpdateQty(newQty: number) {
-    if (newQty < 1 || newQty > stock_quantity) return;
+  async function handleUpdateQty(newQty: number) {
+    await reloadCart();
+    if (newQty < 1 || newQty > stock_quantity) {
+      console.log('[detalhes] handleUpdateQty: quantidade inválida', newQty);
+      return;
+    }
     setQty(newQty);
-    const exists = cart.find(item => item.id === params.id);
+    const exists = cart.find(item => Number(item.id) === Number(params.id));
     if (exists) {
-      const newCart = cart.map(item => item.id === params.id ? { ...item, quantity: newQty } : item);
+      const newCart = cart.map(item => Number(item.id) === Number(params.id) ? { ...item, quantity: newQty } : item);
+      await AsyncStorage.setItem('cart', JSON.stringify(newCart));
       setCart(newCart);
-      AsyncStorage.setItem('cart', JSON.stringify(newCart));
-      // Dispara evento para atualização global do carrinho
+      console.log('[detalhes] handleUpdateQty: cart depois', newCart);
       if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
         window.dispatchEvent(new Event('cartUpdated'));
       } else {
         DeviceEventEmitter.emit('cartUpdated');
       }
+    } else {
+      console.log('[detalhes] handleUpdateQty: item não existe no carrinho');
     }
   }
 
-  // Verifica se o produto já está no carrinho
-  const productInCart = cart.find(item => item.id === params.id);
+  // Verifica se o produto já está no carrinho (sempre baseado no estado mais recente)
+  const productInCart = React.useMemo(() => cart.find(item => Number(item.id) === Number(params.id)), [cart, params.id]);
 
   return (
     <View style={styles.mainContainer}>

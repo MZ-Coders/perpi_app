@@ -122,14 +122,22 @@ export default function ProductCatalogScreen() {
   // Adiciona ou remove produto do carrinho e persiste no AsyncStorage
   function handleToggleCart(product: any) {
     setCart(prev => {
-      const exists = prev.find(p => p.id === product.id);
+      console.log('[Cart] handleToggleCart called. Previous cart:', prev);
+      // Always compare and store id as number
+      const exists = prev.find(p => Number(p.id) === Number(product.id));
       let newCart;
       if (exists) {
-        newCart = prev.filter(p => p.id !== product.id);
+        newCart = prev.filter(p => Number(p.id) !== Number(product.id));
+        console.log(`[Cart] Removing product from cart:`, product.id);
       } else {
-        newCart = [...prev, { ...product, quantity: 1 }];
+        // Always store id as number
+        newCart = [...prev, { ...product, id: Number(product.id), quantity: 1 }];
+        console.log(`[Cart] Adding product to cart:`, product.id);
       }
-      AsyncStorage.setItem('cart', JSON.stringify(newCart));
+      AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
+        console.log('[Cart] Cart persisted to AsyncStorage:', newCart);
+      });
+      console.log('[Cart] New cart state after toggle:', newCart);
       return newCart;
     });
   }
@@ -137,15 +145,19 @@ export default function ProductCatalogScreen() {
   useEffect(() => {
     function syncCart() {
       AsyncStorage.getItem('cart').then(stored => {
+        console.log('[Cart] syncCart called. Raw value from AsyncStorage:', stored);
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
             setCart(Array.isArray(parsed) ? parsed : []);
-          } catch {
+            console.log('[Cart] Cart restored from AsyncStorage:', parsed);
+          } catch (e) {
             setCart([]);
+            console.log('[Cart] Error parsing cart from AsyncStorage, setting to []', e);
           }
         } else {
           setCart([]);
+          console.log('[Cart] No cart found in AsyncStorage, setting to []');
         }
       });
     }
