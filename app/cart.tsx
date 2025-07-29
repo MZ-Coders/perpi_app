@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { DeviceEventEmitter, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { DeviceEventEmitter, FlatList, Image, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../hooks/useAuthUser';
 import { supabase } from '../lib/supabaseClient';
@@ -111,7 +111,13 @@ export default function CartScreen() {
     setCartItems(newCart);
     AsyncStorage.setItem('cart', JSON.stringify(newCart));
     // Dispara evento para atualização global do carrinho
-    DeviceEventEmitter.emit('cartUpdated');
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      // Web: dispara evento customizado
+      window.dispatchEvent(new Event('cartUpdated'));
+    } else {
+      // Mobile: DeviceEventEmitter
+      DeviceEventEmitter.emit('cartUpdated');
+    }
   }
 
   function handleRemoveItem(itemId: number) {
