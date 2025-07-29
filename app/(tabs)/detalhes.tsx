@@ -9,10 +9,12 @@
 //   headerLeft: () => null // Remove o botão padrão do drawer
 // };
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
@@ -32,20 +34,29 @@ export default function ProductDetailScreen() {
   const [cart, setCart] = useState<any[]>([]);
   // Quantidade selecionada (default 1, mas se já existe no carrinho, usa a do carrinho)
   const [qty, setQty] = useState(1);
-  // Carrega carrinho do AsyncStorage ao montar
-  React.useEffect(() => {
-    AsyncStorage.getItem('cart').then(data => {
-      if (data) {
-        try {
-          const parsed = JSON.parse(data);
-          setCart(parsed);
-          // Se o produto já está no carrinho, setar a quantidade inicial igual à do carrinho
-          const exists = parsed.find((item: any) => item.id === params.id);
-          if (exists) setQty(exists.quantity);
-        } catch {}
-      }
-    });
-  }, [params.id]);
+  // Atualiza status do item ao entrar na tela (garante sempre o estado mais recente do carrinho)
+  useFocusEffect(
+    React.useCallback(() => {
+      AsyncStorage.getItem('cart').then(data => {
+        if (data) {
+          try {
+            const parsed = JSON.parse(data);
+            setCart(parsed);
+            // Se o produto já está no carrinho, setar a quantidade inicial igual à do carrinho
+            const exists = parsed.find((item: any) => item.id === params.id);
+            if (exists) setQty(exists.quantity);
+            else setQty(1);
+          } catch {
+            setCart([]);
+            setQty(1);
+          }
+        } else {
+          setCart([]);
+          setQty(1);
+        }
+      });
+    }, [params.id])
+  );
   const [added, setAdded] = useState(false);
 
   // Extrair e converter parâmetros para os tipos corretos
@@ -74,8 +85,27 @@ export default function ProductDetailScreen() {
     const newCart = [...cart, { id: params.id, name, price, image_url, quantity: qty }];
     setCart(newCart);
     AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    // Dispara evento para atualização global do carrinho
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new Event('cartUpdated'));
+    } else {
+      DeviceEventEmitter.emit('cartUpdated');
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 1200);
+  }
+
+  // Remove do carrinho
+  function handleRemoveFromCart() {
+    const newCart = cart.filter(item => item.id !== params.id);
+    setCart(newCart);
+    AsyncStorage.setItem('cart', JSON.stringify(newCart));
+    // Dispara evento para atualização global do carrinho
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new Event('cartUpdated'));
+    } else {
+      DeviceEventEmitter.emit('cartUpdated');
+    }
   }
 
   // Atualiza quantidade do produto no carrinho
@@ -87,6 +117,12 @@ export default function ProductDetailScreen() {
       const newCart = cart.map(item => item.id === params.id ? { ...item, quantity: newQty } : item);
       setCart(newCart);
       AsyncStorage.setItem('cart', JSON.stringify(newCart));
+      // Dispara evento para atualização global do carrinho
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new Event('cartUpdated'));
+      } else {
+        DeviceEventEmitter.emit('cartUpdated');
+      }
     }
   }
 
@@ -212,8 +248,8 @@ export default function ProductDetailScreen() {
                 <Text style={styles.qtyBtnText}>+</Text>
               </TouchableOpacity>
             </View>
-            {/* Se não está no carrinho, mostra botão Adicionar. Se já está, não mostra botão */}
-            {!productInCart && (
+            {/* Se não está no carrinho, mostra botão Adicionar. Se já está, mostra botão Remover */}
+            {!productInCart ? (
               <TouchableOpacity 
                 style={[styles.addToCartButtonInline, stock_quantity <= 0 && styles.disabledButton]}
                 disabled={stock_quantity <= 0}
@@ -228,6 +264,20 @@ export default function ProductDetailScreen() {
                   <Text style={styles.addToCartText}>
                     {stock_quantity > 0 ? (added ? 'Adicionado!' : 'Adicionar ao Carrinho') : 'Produto Esgotado'}
                   </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={[styles.addToCartButtonInline, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#FF3B30' }]}
+                onPress={handleRemoveFromCart}
+              >
+                <LinearGradient
+                  colors={['#FF3B30', '#FF7A00']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.addToCartGradientInline}
+                >
+                  <Text style={[styles.addToCartText, { color: '#fff' }]}>Remover do Carrinho</Text>
                 </LinearGradient>
               </TouchableOpacity>
             )}
