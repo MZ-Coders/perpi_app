@@ -119,14 +119,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     backgroundColor: '#FFFFFF',
     paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
+    // shadowColor: '#000',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 1,
+    // },
+    // shadowOpacity: 0.08,
+    // shadowRadius: 2,
+    // elevation: 0,
   },
   sectionHeader: {
     paddingHorizontal: 16,
@@ -159,26 +159,6 @@ const styles = StyleSheet.create({
   categoryItemActive: {
     transform: [{ scale: 1.05 }],
   },
-//   categoryCircle: {
-//     position: 'relative',
-//     marginBottom: 8,
-//     borderRadius: 40,
-//     padding: 4,
-//     backgroundColor: 'transparent',
-//   },
-//   categoryCircleActive: {
-//     backgroundColor: 'rgba(255, 122, 0, 0.1)',
-//     borderWidth: 2,
-//     borderColor: '#FF7A00',
-//     shadowColor: '#FF7A00',
-//     shadowOffset: {
-//       width: 0,
-//       height: 2,
-//     },
-//     shadowOpacity: 0.2,
-//     shadowRadius: 4,
-//     elevation: 3,
-//   },
   categoryImage: {
     width: 64,
     height: 64,
@@ -234,31 +214,5 @@ const styles = StyleSheet.create({
     color: '#FF7A00',
     fontWeight: '700',
   },
-//   selectionIndicator: {
-//     position: 'absolute',
-//     top: -2,
-//     right: -2,
-//     width: 20,
-//     height: 20,
-//     borderRadius: 10,
-//     backgroundColor: '#FF7A00',
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     borderWidth: 2,
-//     borderColor: '#FFFFFF',
-//     shadowColor: '#000',
-//     shadowOffset: {
-//       width: 0,
-//       height: 1,
-//     },
-//     shadowOpacity: 0.2,
-//     shadowRadius: 2,
-//     elevation: 2,
-//   },
-//   checkIcon: {
-//     width: 8,
-//     height: 8,
-//     borderRadius: 4,
-//     backgroundColor: '#FFFFFF',
-//   },
+
 });
