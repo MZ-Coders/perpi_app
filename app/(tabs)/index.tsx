@@ -334,42 +334,9 @@ export default function ProductCatalogScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header customizado com fundo verde, menu e carrinho */}
-      <View style={{ position: 'relative' }}>
-        {/* Search container flutuante, mas atrás do header */}
-        <Animated.View
-          style={[
-            styles.searchContainer,
-            {
-              position: Platform.OS === 'web' ? 'fixed' : 'absolute',
-              top: Platform.OS === 'web' ? 115 : 115, // ajuste conforme header
-              left: 0,
-              right: 0,
-              zIndex: 1, // menor que o header
-              transform: [{ translateY: searchAnim }],
-              elevation: 2,
-              overflow: 'hidden',
-            },
-          ]}
-        >
-          <View style={styles.searchInnerBox}>
-            <Icon name="search" size={20} color="#888" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar produtos..."
-              placeholderTextColor="#888"
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-              autoCorrect={false}
-              autoCapitalize="none"
-              underlineColorAndroid="transparent"
-            />
-          </View>
-        </Animated.View>
-
-        {/* Header sempre acima do search container */}
-        <LinearGradient colors={["#008A44", "#00C851"]} style={[styles.header, { zIndex: 2, position: Platform.OS === 'web' ? 'fixed' : 'absolute', top: 0, left: 0, right: 0, elevation: 10 }] /* header sempre acima */}>
+      {/* Header e busca em modo relativo para web/mobile */}
+      <View style={{ position: 'relative', zIndex: 2 }}>
+        <LinearGradient colors={["#008A44", "#00C851"]} style={[styles.header, { zIndex: 2, position: 'relative', top: 0, left: 0, right: 0, elevation: 10 }] /* header sempre acima */}>
           <View style={styles.headerTop}>
             <TouchableOpacity
               onPress={() => {
@@ -425,12 +392,42 @@ export default function ProductCatalogScreen() {
             </View>
           </View>
         </LinearGradient>
+        <Animated.View
+          style={[
+            styles.searchContainer,
+            {
+              position: 'relative',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 1,
+              transform: [{ translateY: searchAnim }],
+              elevation: 2,
+              overflow: 'hidden',
+            },
+          ]}
+        >
+          <View style={styles.searchInnerBox}>
+            <Icon name="search" size={20} color="#888" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar produtos..."
+              placeholderTextColor="#888"
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
+              underlineColorAndroid="transparent"
+            />
+          </View>
+        </Animated.View>
       </View>
 
       <View style={{ flex: 1 }}>
-        {/* Conteúdo scrollável com marginTop para compensar search container */}
+        {/* Conteúdo scrollável com marginTop para compensar header e busca */}
         <ScrollView
-          style={styles.scrollableContent}
+          style={[styles.scrollableContent, { marginTop: -210 }]} 
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={true}
           bounces={true}
