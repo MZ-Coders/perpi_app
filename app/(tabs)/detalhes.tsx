@@ -17,6 +17,7 @@ import React, { useState } from 'react';
 import { DeviceEventEmitter, Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
+import AppHeaderTransparent from '@/components/AppHeaderTransparent';
 
 const { width } = Dimensions.get('window');
 let SharedElement: any = null;
@@ -167,14 +168,7 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={styles.mainContainer}>
-      <StatusBar style="light" translucent backgroundColor="transparent" />
-      {/* Botão de voltar personalizado */}
-      <TouchableOpacity 
-        style={styles.backButton}
-        onPress={() => router.back()}
-      >
-        <Icon name="arrow-left" size={24} color="#fff" />
-      </TouchableOpacity>
+      <AppHeaderTransparent />
       <ParallaxScrollView
         headerImage={
           Platform.OS === 'web' || !SharedElement ? (
