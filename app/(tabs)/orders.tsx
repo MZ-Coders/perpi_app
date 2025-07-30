@@ -1,97 +1,155 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, Animated } from 'react-native';
 import AppHeader from '../../components/AppHeader';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import { supabase } from '../../lib/supabaseClient';
 
+// Types
+interface Order {
+  id: number;
+  customer_id: string;
+  total_amount: number;
+  order_status: string;
+  created_at: string;
+  endereco_entrega: string;
+  cidade_entrega: string;
+}
+
+interface OrderItem {
+  id: number;
+  order_id: number;
+  product_id: number;
+  quantity: number;
+  price_at_purchase: number;
+  product?: {
+    id: number;
+    name: string;
+    image_url: string;
+  };
+}
+
+interface OrderItemsMap {
+  [orderId: number]: OrderItem[];
+}
+
+interface ExpandedOrdersMap {
+  [orderId: number]: boolean;
+}
+
+// Constants
+const STATUS_COLORS = {
+  delivered: '#34C759',
+  preparing: '#FFCC00',
+  cancelled: '#FF3B30',
+  sent: '#008A44',
+  pending: '#008A44',
+} as const;
+
+const STATUS_LABELS = {
+  delivered: 'Entregue',
+  preparing: 'Em preparação',
+  cancelled: 'Cancelado',
+  pending: 'Pendente',
+  sent: 'Enviado',
+} as const;
+
 export default function OrdersScreen() {
+  // Hooks
   const authUser = useAuthUser();
-  const USER_ID = authUser?.id;
-  const [orders, setOrders] = useState<any[]>([]);
-  const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
+  const router = require('expo-router').useRouter();
+
+  // State
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItemsMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedOrders, setExpandedOrders] = useState<{ [orderId: number]: boolean }>({});
+  const [expandedOrders, setExpandedOrders] = useState<ExpandedOrdersMap>({});
 
+  // Effects
   useEffect(() => {
-    (async () => {
-      if (!USER_ID) return;
+    if (authUser?.id) {
+      fetchOrdersWithItems();
+    }
+  }, [authUser?.id]);
+
+  // Data fetching
+  const fetchOrdersWithItems = async () => {
+    if (!authUser?.id) return;
+
+    try {
       setLoading(true);
-      const { data, error } = await supabase
+      setError(null);
+
+      // Fetch orders
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
-        .eq('customer_id', USER_ID)
+        .eq('customer_id', authUser.id)
         .order('created_at', { ascending: false });
-      console.log('[DEBUG] orders:', data);
-      if (error) setError(error.message);
-      else setOrders(data || []);
-      setLoading(false);
-      // Fetch order items for each order
-      if (data && data.length > 0) {
-        const orderIds = data.map((order: any) => order.id);
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select('*')
-          .in('order_id', orderIds);
-        console.log('[DEBUG] order_items:', itemsData);
-        if (!itemsError && itemsData) {
-          // Fetch products for all items
-          const productIds = [...new Set(itemsData.map((item: any) => item.product_id))];
-          const { data: productsData } = await supabase
-            .from('products')
-            .select('id, name, image_url')
-            .in('id', productIds);
-          console.log('[DEBUG] products:', productsData);
-          // Group items by order_id and attach product info
-          const grouped: { [orderId: number]: any[] } = {};
-          itemsData.forEach((item: any) => {
-            const product = productsData?.find((p: any) => p.id === item.product_id);
-            if (!grouped[item.order_id]) grouped[item.order_id] = [];
-            grouped[item.order_id].push({ ...item, product });
-          });
-          console.log('[DEBUG] grouped:', grouped);
-          setOrderItems(grouped);
-        }
+
+      if (ordersError) throw ordersError;
+      
+      setOrders(ordersData || []);
+
+      // Fetch order items and products
+      if (ordersData && ordersData.length > 0) {
+        await fetchOrderItems(ordersData.map(order => order.id));
       }
-    })();
-  }, [USER_ID]);
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'entregue':
-      case 'delivered':
-        return styles.statusSuccess;
-      case 'em_preparacao':
-      case 'preparing':
-        return styles.statusWarning;
-      case 'cancelado':
-      case 'cancelled':
-        return styles.statusError;
-      default:
-        return styles.statusPrimary;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'entregue':
-      case 'delivered':
-        return 'Entregue';
-      case 'em_preparacao':
-      case 'preparing':
-        return 'Em Preparação';
-      case 'cancelado':
-      case 'cancelled':
-        return 'Cancelado';
-      case 'pendente':
-      case 'pending':
-        return 'Pendente';
-      default:
-        return status || 'Processando';
+  const fetchOrderItems = async (orderIds: number[]) => {
+    try {
+      // Get order items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('order_items')
+        .select('*')
+        .in('order_id', orderIds);
+
+      if (itemsError) throw itemsError;
+      if (!itemsData) return;
+
+      // Get unique product IDs
+      const productIds = [...new Set(itemsData.map(item => item.product_id))];
+
+      // Fetch products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('id, name, image_url')
+        .in('id', productIds);
+
+      if (productsError) throw productsError;
+
+      // Group items by order_id and attach product info
+      const grouped: OrderItemsMap = {};
+      itemsData.forEach(item => {
+        const product = productsData?.find(p => p.id === item.product_id);
+        if (!grouped[item.order_id]) grouped[item.order_id] = [];
+        grouped[item.order_id].push({ ...item, product });
+      });
+
+      setOrderItems(grouped);
+    } catch (err) {
+      console.error('Error fetching order items:', err);
     }
   };
 
-  const formatDate = (dateString: string) => {
+  // Utility functions
+  const getStatusColor = (status: string): string => {
+    const normalizedStatus = status?.toLowerCase().replace('_', '') as keyof typeof STATUS_COLORS;
+    return STATUS_COLORS[normalizedStatus] || STATUS_COLORS.pending;
+  };
+
+  const getStatusText = (status: string): string => {
+    const normalizedStatus = status?.toLowerCase().replace('_', '') as keyof typeof STATUS_LABELS;
+    return STATUS_LABELS[normalizedStatus] || status || 'Processando';
+  };
+
+  const formatDate = (dateString: string): string => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', {
@@ -103,112 +161,180 @@ export default function OrdersScreen() {
     });
   };
 
-  const renderOrderItem = ({ item }: { item: any }) => {
-    const expanded = expandedOrders[item.id] || false;
-    return (
-      <View style={styles.orderCard}>
-        {/* Header do pedido (sempre visível) */}
+  const formatCurrency = (amount: number): string => {
+    return `MZN ${Number(amount).toFixed(2)}`;
+  };
 
-        <View style={styles.orderHeader}>
-          <View style={styles.orderHeaderTop}>
-            <Text style={styles.orderId}>Pedido #{item.id}</Text>
-            <View style={[styles.statusBadge, getStatusColor(item.order_status)]}>
-              <Text style={styles.statusText}>{getStatusText(item.order_status)}</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-            <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
-            <Text style={styles.orderTotalHighlight}>MZN {Number(item.total_amount).toFixed(2)}</Text>
-          </View>
+  const isSentStatus = (status: string): boolean => {
+    return ['sent', 'enviado'].includes(status.toLowerCase());
+  };
+
+  // Event handlers
+  const toggleOrderExpansion = (orderId: number) => {
+    setExpandedOrders(prev => ({ ...prev, [orderId]: !prev[orderId] }));
+  };
+
+  const handleTrackOrder = (orderId: number) => {
+    router.push({ pathname: '/order-tracking', params: { orderId } });
+  };
+
+  // Components
+  const StatusBadge = ({ status }: { status: string }) => (
+    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) }]}>
+      <Text style={styles.statusText}>{getStatusText(status)}</Text>
+    </View>
+  );
+
+  const OrderHeader = ({ order }: { order: Order }) => {
+    const isExpanded = expandedOrders[order.id];
+    const showTracking = isSentStatus(order.order_status);
+
+    return (
+      <View style={styles.orderHeader}>
+        <View style={styles.orderHeaderTop}>
+          <Text style={styles.orderId}>#{order.id}</Text>
+          <StatusBadge status={order.order_status} />
+        </View>
+        
+        <View style={styles.orderHeaderBottom}>
+          <Text style={styles.orderDate}>{formatDate(order.created_at)}</Text>
+          <Text style={styles.orderTotal}>{formatCurrency(order.total_amount)}</Text>
         </View>
 
-        {/* Botão de expandir/recolher */}
-        <Text
-          style={{ color: '#008A44', fontWeight: 'bold', marginBottom: expanded ? 12 : 0, marginTop: 4, alignSelf: 'flex-end' }}
-          onPress={() => setExpandedOrders(prev => ({ ...prev, [item.id]: !expanded }))}
-        >
-          {expanded ? 'Ocultar detalhes ▲' : 'Ver detalhes ▼'}
-        </Text>
-
-        {/* Detalhes só aparecem se expandido */}
-        {expanded && (
-          <>
-            {/* Informações do pedido */}
-            <View style={styles.orderInfo}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Total:</Text>
-                <Text style={styles.totalAmount}>MZN {Number(item.total_amount).toFixed(2)}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Endereço:</Text>
-                <Text style={styles.infoValue} numberOfLines={2}>
-                  {item.endereco_entrega}, {item.cidade_entrega}
-                </Text>
-              </View>
-            </View>
-
-            {/* Itens do pedido */}
-            {orderItems[item.id] && orderItems[item.id].length > 0 && (
-              <View style={styles.itemsSection}>
-                <Text style={styles.itemsTitle}>Itens do Pedido</Text>
-                <ScrollView style={styles.itemsList} nestedScrollEnabled>
-                  {orderItems[item.id].map((orderItem: any, index: number) => (
-                    <View key={`${orderItem.id}-${index}`} style={styles.orderItemRow}>
-                      <View style={styles.itemImageContainer}>
-                        <Image
-                          source={orderItem.product?.image_url ? { uri: orderItem.product.image_url } : require('../../assets/images/placeholder-Products.jpg')}
-                          style={styles.itemImage}
-                          resizeMode="cover"
-                        />
-                      </View>
-                      <View style={styles.itemDetails}>
-                        <Text style={styles.itemName} numberOfLines={2}>
-                          {orderItem.product?.name || 'Produto'}
-                        </Text>
-                        <View style={styles.itemMeta}>
-                          <Text style={styles.itemQuantity}>Qtd: {orderItem.quantity}</Text>
-                          <Text style={styles.itemPrice}>
-                            MZN {Number(orderItem.price_at_purchase).toFixed(2)}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </>
-        )}
+        <View style={styles.orderActions}>
+          {showTracking && (
+            <TouchableOpacity
+              style={styles.trackButton}
+              onPress={() => handleTrackOrder(order.id)}
+            >
+              <Text style={styles.trackButtonText}>🚚 Rastrear</Text>
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity
+            style={styles.expandButton}
+            onPress={() => toggleOrderExpansion(order.id)}
+          >
+            <Text style={styles.expandButtonText}>
+              {isExpanded ? 'Ocultar' : 'Detalhes'} {isExpanded ? '▲' : '▼'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
 
+  const OrderDetails = ({ order }: { order: Order }) => (
+    <View style={styles.orderDetails}>
+      <View style={styles.orderInfo}>
+        <InfoRow label="Endereço" value={`${order.endereco_entrega}, ${order.cidade_entrega}`} />
+        <InfoRow label="Total" value={formatCurrency(order.total_amount)} highlight />
+      </View>
+
+      {orderItems[order.id] && (
+        <OrderItemsList items={orderItems[order.id]} />
+      )}
+    </View>
+  );
+
+  const InfoRow = ({ label, value, highlight = false }: { 
+    label: string; 
+    value: string; 
+    highlight?: boolean;
+  }) => (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}:</Text>
+      <Text style={[styles.infoValue, highlight && styles.infoValueHighlight]}>{value}</Text>
+    </View>
+  );
+
+  const OrderItemsList = ({ items }: { items: OrderItem[] }) => (
+    <View style={styles.itemsSection}>
+      <Text style={styles.itemsTitle}>Itens ({items.length})</Text>
+      <ScrollView style={styles.itemsList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+        {items.map((item, index) => (
+          <OrderItemRow key={`${item.id}-${index}`} item={item} />
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  const OrderItemRow = ({ item }: { item: OrderItem }) => (
+    <View style={styles.orderItemRow}>
+      <View style={styles.itemImageContainer}>
+        <Image
+          source={
+            item.product?.image_url 
+              ? { uri: item.product.image_url }
+              : require('../../assets/images/placeholder-Products.jpg')
+          }
+          style={styles.itemImage}
+          resizeMode="cover"
+        />
+      </View>
+      
+      <View style={styles.itemDetails}>
+        <Text style={styles.itemName} numberOfLines={2}>
+          {item.product?.name || 'Produto'}
+        </Text>
+        <View style={styles.itemMeta}>
+          <Text style={styles.itemQuantity}>Qtd: {item.quantity}</Text>
+          <Text style={styles.itemPrice}>{formatCurrency(item.price_at_purchase)}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const OrderCard = ({ item }: { item: Order }) => {
+    const isExpanded = expandedOrders[item.id];
+
+    return (
+      <View style={styles.orderCard}>
+        <OrderHeader order={item} />
+        {isExpanded && <OrderDetails order={item} />}
+      </View>
+    );
+  };
+
+  const EmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyIcon}>🛒</Text>
+      <Text style={styles.emptyTitle}>Nenhum pedido ainda</Text>
+      <Text style={styles.emptyMessage}>
+        Seus pedidos aparecerão aqui após a primeira compra.
+      </Text>
+    </View>
+  );
+
+  const LoadingState = () => (
+    <View style={styles.loadingContainer}>
+      <Text style={styles.loadingText}>Carregando pedidos...</Text>
+    </View>
+  );
+
+  const ErrorState = () => (
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorText}>❌ Erro ao carregar</Text>
+      <Text style={styles.errorDetail}>{error}</Text>
+    </View>
+  );
+
+  // Render
   return (
     <View style={styles.container}>
-      <AppHeader title="Meus Pedidos" />
+      <AppHeader title="Meus pedidos" />
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Carregando pedidos...</Text>
-        </View>
+        <LoadingState />
       ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>❌ Erro ao carregar pedidos</Text>
-          <Text style={styles.errorDetail}>{error}</Text>
-        </View>
+        <ErrorState />
       ) : orders.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>🛒</Text>
-          <Text style={styles.emptyTitle}>Nenhuma compra ainda</Text>
-          <Text style={styles.emptyMessage}>
-            Quando você fizer seu primeiro pedido, ele aparecerá aqui.
-          </Text>
-        </View>
+        <EmptyState />
       ) : (
         <FlatList
           data={orders}
           keyExtractor={item => item.id.toString()}
-          renderItem={renderOrderItem}
+          renderItem={OrderCard}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -219,113 +345,126 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Layout principal
+  // Layout
   container: {
     flex: 1,
-    backgroundColor: '#FDFDFB', // neutralLight
+    backgroundColor: '#FDFDFB',
   },
-  
-  // Header
-  header: {
-    backgroundColor: '#008A44', // brand-color-primary
-    paddingTop: 60,
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-  },
-  headerTitle: {
-    fontSize: 32, // display-lg equivalent
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 15, // body-md
-    fontWeight: '400',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    opacity: 0.9,
-  },
-
-  // Lista
   listContainer: {
     padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   separator: {
-    height: 12,
+    height: 16,
   },
 
-  // Card do pedido
+  // Order Card
   orderCard: {
-    backgroundColor: '#FFFFFF', // neutralSurface
-    borderRadius: 16, // radius-lg
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
   },
 
-  // Header do pedido
+  // Order Header
   orderHeader: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   orderHeaderTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  orderHeaderBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   orderId: {
-    fontSize: 20, // title-lg
-    fontWeight: '600',
-    color: '#008A44', // brand-color-primary
-  },
-  orderDate: {
-    fontSize: 13, // caption-sm
-    fontWeight: '500',
-    color: '#5C5C5C', // neutralTextSecondary
-    textTransform: 'uppercase',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#008A44',
     letterSpacing: 0.5,
   },
+  orderDate: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#5C5C5C',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  orderTotal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FF7A00',
+  },
 
-  // Status badge
+  // Status Badge
   statusBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 9999, // radius-full
-    minWidth: 80,
+    paddingVertical: 6,
+    borderRadius: 20,
+    minWidth: 90,
     alignItems: 'center',
   },
   statusText: {
-    fontSize: 11, // caption-xs
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: '#FFFFFF',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statusSuccess: {
-    backgroundColor: '#34C759',
-  },
-  statusWarning: {
-    backgroundColor: '#FFCC00',
-  },
-  statusError: {
-    backgroundColor: '#FF3B30',
-  },
-  statusPrimary: {
-    backgroundColor: '#008A44',
+    letterSpacing: 0.8,
   },
 
-  // Informações do pedido
-  orderInfo: {
+  // Actions
+  orderActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 12,
+  },
+  trackButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#FF7A00',
+    borderRadius: 20,
+  },
+  trackButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  expandButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#008A44',
+    borderRadius: 20,
+  },
+  expandButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#008A44',
+  },
+
+  // Order Details
+  orderDetails: {
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0', // neutralBorder
+    borderTopColor: '#F0F0F0',
+    marginTop: 16,
     paddingTop: 16,
+  },
+
+  // Order Info
+  orderInfo: {
     marginBottom: 16,
   },
   infoRow: {
@@ -335,55 +474,47 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoLabel: {
-    fontSize: 14, // body-sm
+    fontSize: 14,
     fontWeight: '500',
-    color: '#5C5C5C', // neutralTextSecondary
+    color: '#5C5C5C',
     flex: 1,
   },
   infoValue: {
-    fontSize: 14, // body-sm
-    fontWeight: '400',
-    color: '#1A1A1A', // neutralTextPrimary
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1A1A1A',
     flex: 2,
     textAlign: 'right',
   },
-
-  totalAmount: {
-    fontSize: 18, // title-md
+  infoValueHighlight: {
+    fontSize: 16,
     fontWeight: '700',
-    color: '#008A44', // brand-color-primary
+    color: '#008A44',
   },
 
-  orderTotalHighlight: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FF7A00', // brand accent color
-    marginLeft: 8,
-  },
-
-  // Seção de itens
+  // Items Section
   itemsSection: {
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0', // neutralBorder
+    borderTopColor: '#F0F0F0',
     paddingTop: 16,
   },
   itemsTitle: {
-    fontSize: 16, // title-md
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A', // neutralTextPrimary
+    color: '#1A1A1A',
     marginBottom: 12,
   },
   itemsList: {
-    maxHeight: 200,
+    maxHeight: 240,
   },
 
-  // Item do pedido
+  // Order Item
   orderItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F3F3',
+    borderBottomColor: '#F8F8F8',
   },
   itemImageContainer: {
     marginRight: 12,
@@ -391,23 +522,16 @@ const styles = StyleSheet.create({
   itemImage: {
     width: 48,
     height: 48,
-    borderRadius: 8, // radius-md
-    backgroundColor: '#F3F3F3',
-  },
-  imagePlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imagePlaceholderText: {
-    fontSize: 20,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
   },
   itemDetails: {
     flex: 1,
   },
   itemName: {
-    fontSize: 14, // body-sm
+    fontSize: 14,
     fontWeight: '500',
-    color: '#1A1A1A', // neutralTextPrimary
+    color: '#1A1A1A',
     marginBottom: 4,
     lineHeight: 18,
   },
@@ -417,17 +541,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   itemQuantity: {
-    fontSize: 12, // caption-sm
+    fontSize: 12,
     fontWeight: '500',
-    color: '#5C5C5C', // neutralTextSecondary
+    color: '#5C5C5C',
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   itemPrice: {
-    fontSize: 14, // body-sm
+    fontSize: 14,
     fontWeight: '600',
-    color: '#FF7A00', // brand-color-accent
+    color: '#FF7A00',
   },
 
-  // Estados de loading/error/empty
+  // States
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -435,9 +563,9 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   loadingText: {
-    fontSize: 16, // body-lg
-    fontWeight: '400',
-    color: '#5C5C5C', // neutralTextSecondary
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#5C5C5C',
     textAlign: 'center',
   },
   
@@ -448,16 +576,16 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   errorText: {
-    fontSize: 18, // title-md
+    fontSize: 18,
     fontWeight: '600',
-    color: '#FF3B30', // error
+    color: '#FF3B30',
     textAlign: 'center',
     marginBottom: 8,
   },
   errorDetail: {
-    fontSize: 14, // body-sm
+    fontSize: 14,
     fontWeight: '400',
-    color: '#5C5C5C', // neutralTextSecondary
+    color: '#5C5C5C',
     textAlign: 'center',
   },
 
@@ -469,20 +597,21 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     fontSize: 64,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   emptyTitle: {
-    fontSize: 24, // headline-md
+    fontSize: 24,
     fontWeight: '700',
-    color: '#1A1A1A', // neutralTextPrimary
+    color: '#1A1A1A',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   emptyMessage: {
-    fontSize: 16, // body-lg
+    fontSize: 16,
     fontWeight: '400',
-    color: '#5C5C5C', // neutralTextSecondary
+    color: '#5C5C5C',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
+    maxWidth: 280,
   },
 });
