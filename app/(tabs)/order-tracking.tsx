@@ -10,7 +10,8 @@ import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 const pinMeIcon = require('../../assets/images/pin-me.png');
 
 // Para web: importar Leaflet
-let MapComponent: React.FC<any> = () => null;
+
+let MapComponent: React.FC<any>;
 if (Platform.OS === 'web') {
   // @ts-ignore
   MapComponent = ({ lat, lng }: { lat: number; lng: number }) => {
@@ -22,49 +23,41 @@ if (Platform.OS === 'web') {
         link.href = 'https://unpkg.com/leaflet/dist/leaflet.css';
         document.head.appendChild(link);
       }
-      
       const L = require('leaflet');
       const mapId = 'order-tracking-map';
       let map = (window as any)._orderTrackingMap;
-      
       if (!map) {
         map = L.map(mapId).setView([lat, lng], 50);
         (window as any)._orderTrackingMap = map;
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '©Perpi 2025',
         }).addTo(map);
-        
-        // SOLUÇÃO: Usar caminho da pasta public
         const customIcon = L.icon({
           iconUrl: '/images/pin-me.png',
           iconSize: [80, 80],
-          iconAnchor: [40, 80], // metade da largura, altura total
+          iconAnchor: [40, 80],
           popupAnchor: [0, -80],
           shadowUrl: null,
         });
-        
         L.marker([lat, lng], { icon: customIcon })
           .addTo(map)
           .bindPopup('Você está aqui');
       } else {
         map.setView([lat, lng], 15);
         if (map._lastMarker) map.removeLayer(map._lastMarker);
-        
         const customIcon = L.icon({
           iconUrl: '/images/pin-me.png',
           iconSize: [40, 40],
-          iconAnchor: [20, 40], // metade da largura, altura total
+          iconAnchor: [20, 40],
           popupAnchor: [0, -40],
           shadowUrl: null,
         });
-        
         map._lastMarker = L.marker([lat, lng], { icon: customIcon })
           .addTo(map)
           .bindPopup('Você está aqui');
       }
       return () => {};
     }, [lat, lng]);
-    
     return <div id="order-tracking-map" style={{ 
       position: 'fixed', 
       top: 0, 
@@ -75,17 +68,12 @@ if (Platform.OS === 'web') {
     }} />;
   };
 } else {
-  // Mobile: usar react-native-maps com tiles do OpenStreetMap
-  // Precisa instalar: expo install react-native-maps
-  // OSM: https://wiki.openstreetmap.org/wiki/Tile_servers
-  // MapView e Marker são importados dinamicamente para evitar erro no web
-  MapComponent = ({ lat, lng }: { lat: number; lng: number }) => {
+  // Defina o componente mobile DENTRO do bloco else para evitar análise do bundler web
+  MapComponent = function MapComponentMobile({ lat, lng }: { lat: number; lng: number }) {
     const [MapView, setMapView] = React.useState<any>(null);
     const [Marker, setMarker] = React.useState<any>(null);
     const [UrlTile, setUrlTile] = React.useState<any>(null);
-
     React.useEffect(() => {
-      // Importação dinâmica para evitar erro no web
       (async () => {
         const maps = await import('react-native-maps');
         setMapView(() => maps.default);
@@ -93,7 +81,6 @@ if (Platform.OS === 'web') {
         setUrlTile(() => maps.UrlTile);
       })();
     }, []);
-
     if (!MapView || !Marker || !UrlTile) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FDFDFB' }}>
@@ -101,7 +88,6 @@ if (Platform.OS === 'web') {
         </View>
       );
     }
-
     return (
       <MapView
         style={{ flex: 1 }}

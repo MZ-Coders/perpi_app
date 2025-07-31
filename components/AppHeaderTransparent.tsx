@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
 interface AppHeaderTransparentProps {
@@ -10,6 +10,35 @@ interface AppHeaderTransparentProps {
 
 const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack }) => {
   const router = useRouter();
+  const [cartCount, setCartCount] = React.useState(0);
+
+  // Atualiza quantidade do carrinho ao montar e ao receber evento
+  React.useEffect(() => {
+    function syncCart() {
+      import('@react-native-async-storage/async-storage').then(AsyncStorageModule => {
+        const AsyncStorage = AsyncStorageModule.default;
+        AsyncStorage.getItem('cart').then(stored => {
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              setCartCount(Array.isArray(parsed) ? parsed.length : 0);
+            } catch {
+              setCartCount(0);
+            }
+          } else {
+            setCartCount(0);
+          }
+        });
+      });
+    }
+    syncCart();
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('cartUpdated', syncCart);
+      return () => window.removeEventListener('cartUpdated', syncCart);
+    }
+    return undefined;
+  }, []);
+
   return (
     <>
       <StatusBar style="light" translucent backgroundColor="transparent" />
@@ -28,6 +57,23 @@ const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack }) =
           onPress={() => router.push('/cart')}
         >
           <Icon name="shopping-cart" size={24} color="#fff" />
+          {cartCount > 0 && (
+            <View style={{
+              position: 'absolute',
+              top: 2,
+              right: 2,
+              backgroundColor: '#FF7A00',
+              borderRadius: 10,
+              minWidth: 18,
+              height: 18,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 4,
+              zIndex: 10,
+            }}>
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>{cartCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </>
