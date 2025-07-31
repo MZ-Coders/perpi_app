@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Dimensions 
 } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import OrdersSkeleton from '../../components/OrdersSkeleton';
 import { router } from 'expo-router';
 import AppHeader from '../../components/AppHeader';
@@ -21,13 +22,13 @@ import { supabase } from '../../lib/supabaseClient';
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function OrdersScreen() {
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
   const authUser = useAuthUser();
   const USER_ID = authUser?.id;
   const [orders, setOrders] = useState<any[]>([]);
-  const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +52,6 @@ export default function OrdersScreen() {
             useNativeDriver: true,
           }),
         ]).start();
-        
         setTimeout(async () => {
           // Animação de saída
           Animated.parallel([
@@ -71,7 +71,6 @@ export default function OrdersScreen() {
           await AsyncStorage.removeItem('showOrderSuccess');
         }, 3000);
       }
-      
       if (!USER_ID) return;
       setLoading(true);
       const { data, error } = await supabase
@@ -82,7 +81,6 @@ export default function OrdersScreen() {
       if (error) setError(error.message);
       else setOrders(data || []);
       setLoading(false);
-      
       // Fetch order items for each order
       if (data && data.length > 0) {
         const orderIds = data.map((order: any) => order.id);
@@ -110,38 +108,41 @@ export default function OrdersScreen() {
     })();
   }, [USER_ID]);
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'entregue':
-      case 'delivered':
-        return styles.statusSuccess;
-      case 'em_preparacao':
-      case 'preparing':
-        return styles.statusWarning;
-      case 'cancelado':
-      case 'cancelled':
-        return styles.statusError;
-      default:
-        return styles.statusPrimary;
-    }
-  };
+const getStatusTextColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'entregue':
+    case 'delivered':
+      return { color: '#34C759' };
+    case 'em_preparacao':
+    case 'preparing':
+      return { color: '#FFCC00' };
+    case 'cancelado':
+    case 'cancelled':
+      return { color: '#FF3B30' };
+    case 'pendente':
+    case 'pending':
+      return { color: '#888' };
+    default:
+      return { color: '#008A44' };
+  }
+};
 
-  const getStatusIcon = (status: string) => {
+const getStatusIcon = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'entregue':
       case 'delivered':
-        return '✅';
+        return <MaterialCommunityIcons name="check-circle" size={18} color="#fff" />;
       case 'em_preparacao':
       case 'preparing':
-        return '🍳';
+        return <MaterialCommunityIcons name="chef-hat" size={18} color="#fff" />;
       case 'cancelado':
       case 'cancelled':
-        return '❌';
+        return <MaterialCommunityIcons name="close-circle" size={18} color="#fff" />;
       case 'pendente':
       case 'pending':
-        return '⏳';
+        return <MaterialCommunityIcons name="clock-outline" size={18} color="#888" />;
       default:
-        return '📦';
+        return <MaterialCommunityIcons name="package-variant" size={18} color="#fff" />;
     }
   };
 
@@ -176,6 +177,8 @@ export default function OrdersScreen() {
     });
   };
 
+
+  const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
   const [expandedOrders, setExpandedOrders] = useState<{ [orderId: number]: boolean }>({});
 
   const toggleAccordion = (orderId: number) => {
@@ -198,10 +201,35 @@ export default function OrdersScreen() {
             <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
           </View>
           <View style={styles.orderHeaderRight}>
-            <View style={[styles.statusBadge, getStatusColor(item.order_status)]}>
-              <Text style={styles.statusIcon}>{getStatusIcon(item.order_status)}</Text>
-              <Text style={styles.statusText}>{getStatusText(item.order_status)}</Text>
+            <View style={[styles.statusBadge, styles.statusBadgeGray]}> 
+              <View style={styles.statusIconWrapper}>
+                {getStatusIcon(item.order_status)}
+              </View>
+              <Text style={[styles.statusText, getStatusTextColor(item.order_status)]}>{getStatusText(item.order_status)}</Text>
             </View>
+            {/* Botão de rastreamento, exatamente abaixo do status e mesmo tamanho */}
+            {showTrackButton && (
+              <TouchableOpacity
+                style={[
+                  styles.statusBadge,
+                  styles.trackButton,
+                  {
+                    marginTop: 8,
+                    alignSelf: 'stretch',
+                    minWidth: 100,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 12,
+                    paddingVertical: styles.statusBadge.paddingVertical // igual ao status
+                  }
+                ]}
+                onPress={() => router.push({ pathname: '/order-tracking', params: { orderId: item.id } })}
+              >
+                <MaterialCommunityIcons name="map-marker-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.trackButtonText}>Rastrear</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -271,16 +299,6 @@ export default function OrdersScreen() {
               </ScrollView>
             )}
           </View>
-        )}
-
-        {/* Botão de rastreamento, aparece se status for 'enviado' ou 'sent' */}
-        {showTrackButton && (
-          <TouchableOpacity
-            style={styles.trackButton}
-            onPress={() => router.push({ pathname: '/order-tracking', params: { orderId: item.id } })}
-          >
-            <Text style={styles.trackButtonText}>Rastrear Pedido</Text>
-          </TouchableOpacity>
         )}
       </View>
     );
@@ -502,9 +520,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minWidth: 100,
   },
+  statusBadgeGray: {
+    backgroundColor: '#E0E0E0',
+  },
   statusIcon: {
     fontSize: 14,
-    marginRight: 6,
+  },
+  statusIconWrapper: {
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statusText: {
     fontSize: 12,
@@ -513,18 +538,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  statusSuccess: {
-    backgroundColor: '#34C759',
-  },
-  statusWarning: {
-    backgroundColor: '#FFCC00',
-  },
-  statusError: {
-    backgroundColor: '#FF3B30',
-  },
-  statusPrimary: {
-    backgroundColor: '#008A44',
-  },
+  // Removido: statusSuccess, statusWarning, statusError, statusPrimary, statusPending
 
   // Seção do total
   totalSection: {
