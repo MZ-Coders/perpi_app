@@ -1,7 +1,21 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Animated } from 'react-native';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CategorySkeleton from '../../components/CategorySkeleton';
+
+// Define the Category type if not already defined elsewhere
+type Category = {
+  id: string;
+  name: string;
+  img_url?: string | null;
+};
+
+type CategoryFilterProps = {
+  categories: Category[];
+  selectedCategory: string | null;
+  onSelect: (categoryId: string | null) => void;
+  loading: boolean;
+};
+
 // Para favoritos, usamos o id especial '__favoritos__'
 const FAVORITES_ID = '__favoritos__';
 
