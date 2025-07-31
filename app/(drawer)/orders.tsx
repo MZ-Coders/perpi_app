@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { FlatList, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppHeader from '../../components/AppHeader';
@@ -5,6 +6,7 @@ import { useAuthUser } from '../../hooks/useAuthUser';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function OrdersScreen() {
+  const [showSuccess, setShowSuccess] = useState(false);
   const authUser = useAuthUser();
   const USER_ID = authUser?.id;
   const [orders, setOrders] = useState<any[]>([]);
@@ -14,6 +16,15 @@ export default function OrdersScreen() {
 
   useEffect(() => {
     (async () => {
+      // Checa se deve mostrar modal de sucesso (cross-plataforma)
+      const flag = await AsyncStorage.getItem('showOrderSuccess');
+      if (flag === '1') {
+        setShowSuccess(true);
+        setTimeout(async () => {
+          setShowSuccess(false);
+          await AsyncStorage.removeItem('showOrderSuccess');
+        }, 2000);
+      }
       if (!USER_ID) return;
       setLoading(true);
       const { data, error } = await supabase
@@ -21,7 +32,6 @@ export default function OrdersScreen() {
         .select('*')
         .eq('customer_id', USER_ID)
         .order('created_at', { ascending: false });
-      console.log('[DEBUG] orders:', data);
       if (error) setError(error.message);
       else setOrders(data || []);
       setLoading(false);
@@ -32,7 +42,6 @@ export default function OrdersScreen() {
           .from('order_items')
           .select('*')
           .in('order_id', orderIds);
-        console.log('[DEBUG] order_items:', itemsData);
         if (!itemsError && itemsData) {
           // Fetch products for all items
           const productIds = [...new Set(itemsData.map((item: any) => item.product_id))];
@@ -40,7 +49,6 @@ export default function OrdersScreen() {
             .from('products')
             .select('id, name, image_url')
             .in('id', productIds);
-          console.log('[DEBUG] products:', productsData);
           // Group items by order_id and attach product info
           const grouped: { [orderId: number]: any[] } = {};
           itemsData.forEach((item: any) => {
@@ -48,7 +56,6 @@ export default function OrdersScreen() {
             if (!grouped[item.order_id]) grouped[item.order_id] = [];
             grouped[item.order_id].push({ ...item, product });
           });
-          console.log('[DEBUG] grouped:', grouped);
           setOrderItems(grouped);
         }
       }
@@ -172,9 +179,14 @@ export default function OrdersScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header customizado */}
       <AppHeader title="Meus Pedidos" />
-
+      {showSuccess && (
+        <View style={{ backgroundColor: '#008A44', padding: 16, borderRadius: 8, margin: 16 }}>
+          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18, textAlign: 'center' }}>
+            Compra realizada com sucesso!
+          </Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Carregando pedidos...</Text>

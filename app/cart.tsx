@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { DeviceEventEmitter, FlatList, Image, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useAuthUser } from '../hooks/useAuthUser';
 import { supabase } from '../lib/supabaseClient';
@@ -11,22 +11,26 @@ export default function CartScreen() {
   const authUser = useAuthUser();
   const user = authUser ? authUser : null;
   const USER_ID = user?.id;
-  // TODO: Replace with real address selection
-  const DELIVERY_ADDRESS_ID = 1;
+
+  // Estado de loading
+  const [loading, setLoading] = useState(false);
 
   // Estado do carrinho
   const [cartItems, setCartItems] = useState<any[]>([]);
 
+  // Estado de sucesso
+  const [success, setSuccess] = useState(false);
+
   async function handleRealPurchase() {
-    if (!USER_ID) {
-      return;
-    }
+    if (!USER_ID) return;
     if (cartItems.length === 0) return;
-    const { data: sessionData } = await supabase.auth.getUser();
-    if (sessionData?.user?.id !== USER_ID) {
-      return;
-    }
+    setLoading(true);
     try {
+      const { data: sessionData } = await supabase.auth.getUser();
+      if (sessionData?.user?.id !== USER_ID) {
+        setLoading(false);
+        return;
+      }
       // Buscar endereço e coordenadas do usuário
       const { data: userData, error: userError } = await supabase
         .from('users_')
@@ -40,7 +44,6 @@ export default function CartScreen() {
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          // delivery_address_id: DELIVERY_ADDRESS_ID, // removido pois não existe
           total_amount: totalAmount,
           order_status: 'pending',
           payment_method: 'mpesa',
@@ -83,9 +86,18 @@ export default function CartScreen() {
 
       // 4. Limpar carrinho
       updateCart([]);
-      // Compra realizada com sucesso
+    setLoading(false);
+    setSuccess(true);
+    // Sinaliza sucesso para a tela de pedidos (cross-plataforma)
+    await AsyncStorage.setItem('showOrderSuccess', '1');
+    setTimeout(() => {
+      setSuccess(false);
+      router.back();
+    }, 1800);
     } catch (err) {
-      // Erro ao realizar compra
+      setLoading(false);
+      // Exibe erro simples na tela
+      setSuccess(false);
     }
   }
 
@@ -147,6 +159,13 @@ export default function CartScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Meu Carrinho</Text>
+      {success && (
+        <View style={{ backgroundColor: '#008A44', padding: 16, borderRadius: 8, marginBottom: 16 }}>
+          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18, textAlign: 'center' }}>
+            Compra realizada com sucesso!
+          </Text>
+        </View>
+      )}
       {cartItems.length === 0 ? (
         <Text style={styles.emptyText}>Seu carrinho está vazio.</Text>
       ) : (
@@ -190,9 +209,13 @@ export default function CartScreen() {
         <TouchableOpacity
           style={[styles.buyBtn, cartItems.length === 0 && { opacity: 0.6 }]}
           onPressOut={handleRealPurchase}
-          disabled={cartItems.length === 0}
+          disabled={cartItems.length === 0 || loading}
         >
-          <Text style={styles.buyBtnText}>Comprar</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buyBtnText}>Comprar</Text>
+          )}
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
