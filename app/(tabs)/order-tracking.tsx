@@ -1,3 +1,6 @@
+// ATENÇÃO: Para funcionamento do mapa no mobile, instale as dependências abaixo:
+// expo install react-native-maps expo-location
+// Veja a documentação: https://docs.expo.dev/versions/latest/sdk/map-view/ e https://docs.expo.dev/versions/latest/sdk/location/
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, View } from 'react-native';
@@ -72,28 +75,57 @@ if (Platform.OS === 'web') {
     }} />;
   };
 } else {
-  // Mobile: usar require normal
-  MapComponent = ({ lat, lng }: { lat: number; lng: number }) => (
-    <View style={{ 
-      flex: 1, 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      backgroundColor: '#FDFDFB' 
-    }}>
-      <Image
-        source={pinMeIcon}
-        style={{ width: 64, height: 64 }}
-        resizeMode="contain"
-      />
-      <Text style={{ 
-        marginTop: 16, 
-        color: '#008A44', 
-        fontWeight: 'bold' 
-      }}>
-        Sua localização
-      </Text>
-    </View>
-  );
+  // Mobile: usar react-native-maps com tiles do OpenStreetMap
+  // Precisa instalar: expo install react-native-maps
+  // OSM: https://wiki.openstreetmap.org/wiki/Tile_servers
+  // MapView e Marker são importados dinamicamente para evitar erro no web
+  MapComponent = ({ lat, lng }: { lat: number; lng: number }) => {
+    const [MapView, setMapView] = React.useState<any>(null);
+    const [Marker, setMarker] = React.useState<any>(null);
+    const [UrlTile, setUrlTile] = React.useState<any>(null);
+
+    React.useEffect(() => {
+      // Importação dinâmica para evitar erro no web
+      (async () => {
+        const maps = await import('react-native-maps');
+        setMapView(() => maps.default);
+        setMarker(() => maps.Marker);
+        setUrlTile(() => maps.UrlTile);
+      })();
+    }, []);
+
+    if (!MapView || !Marker || !UrlTile) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FDFDFB' }}>
+          <Text style={{ color: '#008A44', fontWeight: 'bold' }}>Carregando mapa...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <MapView
+        style={{ flex: 1 }}
+        initialRegion={{
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
+        loadingEnabled={true}
+      >
+        <UrlTile
+          urlTemplate="https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png"
+          maximumZ={19}
+          flipY={false}
+        />
+        <Marker coordinate={{ latitude: lat, longitude: lng }}>
+          <Image source={pinMeIcon} style={{ width: 40, height: 40 }} resizeMode="contain" />
+        </Marker>
+      </MapView>
+    );
+  };
 }
 
 export default function OrderTrackingScreen() {
@@ -118,7 +150,20 @@ export default function OrderTrackingScreen() {
         setLocError('Geolocalização não suportada.');
       }
     } else {
-      setLocError('Mapa disponível apenas na versão web.');
+      // Mobile: usar expo-location para obter localização
+      (async () => {
+        try {
+          const { status } = await (await import('expo-location')).requestForegroundPermissionsAsync();
+          if (status !== 'granted') {
+            setLocError('Permissão de localização negada.');
+            return;
+          }
+          const locationObj = await (await import('expo-location')).getCurrentPositionAsync({});
+          setLocation({ lat: locationObj.coords.latitude, lng: locationObj.coords.longitude });
+        } catch (e) {
+          setLocError('Não foi possível obter sua localização.');
+        }
+      })();
     }
   }, []);
 
