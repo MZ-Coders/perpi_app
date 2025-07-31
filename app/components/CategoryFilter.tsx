@@ -1,22 +1,11 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Animated } from 'react-native';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-type Category = {
-  id: string;
-  name: string;
-  img_url: string;
-};
-
-interface CategoryFilterProps {
-  categories: Category[];
-  selectedCategory: string | null;
-  onSelect: (id: string | null) => void;
-}
-
+import CategorySkeleton from '../../components/CategorySkeleton';
 // Para favoritos, usamos o id especial '__favoritos__'
 const FAVORITES_ID = '__favoritos__';
 
-export default function CategoryFilter({ categories, selectedCategory, onSelect }: CategoryFilterProps) {
+function CategoryFilter({ categories, selectedCategory, onSelect, loading }: CategoryFilterProps) {
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -25,6 +14,22 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
       .toUpperCase()
       .slice(0, 2);
   };
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [showSkeleton, setShowSkeleton] = useState(true);
+
+  useEffect(() => {
+    if (!loading && categories.length > 0) {
+      setShowSkeleton(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }).start();
+    } else if (loading) {
+      setShowSkeleton(true);
+      fadeAnim.setValue(0);
+    }
+  }, [loading, categories.length]);
 
   return (
     <View style={styles.container}>
@@ -32,10 +37,9 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
         <Text style={styles.sectionTitle}>CATEGORIAS</Text>
         <Text style={styles.sectionSubtitle}>Toque para filtrar produtos</Text>
       </View>
-      
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={styles.scrollView}
       >
@@ -97,54 +101,61 @@ export default function CategoryFilter({ categories, selectedCategory, onSelect 
           </Text>
         </TouchableOpacity>
 
-        {/* Categorias */}
-        {categories.map((category: Category) => {
-          const isSelected = selectedCategory === category.id;
-          const initials = getInitials(category.name);
-          return (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryItem,
-                isSelected && styles.categoryItemActive
-              ]}
-              onPress={() => onSelect(isSelected ? null : category.id)}
-              activeOpacity={0.7}
-            >
-              {category.img_url ? (
-                <Image 
-                  source={{ uri: category.img_url }} 
-                  style={[
-                    styles.categoryImage,
-                    isSelected && styles.categoryImageActive
-                  ]} 
-                />
-              ) : (
-                <View style={[
-                  styles.categoryIcon,
-                  isSelected && styles.categoryIconActive
-                ]}>
-                  <Text style={[
-                    styles.initialsText,
-                    isSelected && styles.initialsTextActive
+        {/* Skeleton ou categorias */}
+        {showSkeleton ? (
+          <CategorySkeleton />
+        ) : (
+          categories.map((category: Category) => {
+            const isSelected = selectedCategory === category.id;
+            const initials = getInitials(category.name);
+            return (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryItem,
+                  isSelected && styles.categoryItemActive
+                ]}
+                onPress={() => onSelect(isSelected ? null : category.id)}
+                activeOpacity={0.7}
+              >
+                {category.img_url ? (
+                  <Image
+                    source={{ uri: category.img_url }}
+                    style={[
+                      styles.categoryImage,
+                      isSelected && styles.categoryImageActive
+                    ]}
+                  />
+                ) : (
+                  <View style={[
+                    styles.categoryIcon,
+                    isSelected && styles.categoryIconActive
                   ]}>
-                    {initials}
-                  </Text>
-                </View>
-              )}
-              <Text style={[
-                styles.categoryName,
-                isSelected && styles.categoryNameActive
-              ]}>
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                    <Text style={[
+                      styles.initialsText,
+                      isSelected && styles.initialsTextActive
+                    ]}>
+                      {initials}
+                    </Text>
+                  </View>
+                )}
+                <Text style={[
+                  styles.categoryName,
+                  isSelected && styles.categoryNameActive
+                ]}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );
+// ...existing code...
 }
+
+export default CategoryFilter;
 
 const styles = StyleSheet.create({
   container: {

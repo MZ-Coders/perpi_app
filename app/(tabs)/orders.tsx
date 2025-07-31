@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Dimensions 
 } from 'react-native';
+import OrdersSkeleton from '../../components/OrdersSkeleton';
 import { router } from 'expo-router';
 import AppHeader from '../../components/AppHeader';
 import { useAuthUser } from '../../hooks/useAuthUser';
@@ -327,12 +328,7 @@ export default function OrdersScreen() {
       </Modal>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <View style={styles.loadingSpinner}>
-            <Text style={styles.loadingSpinnerText}>🛒</Text>
-          </View>
-          <Text style={styles.loadingText}>Carregando seus pedidos...</Text>
-        </View>
+        <OrdersSkeleton />
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
