@@ -25,7 +25,7 @@ if (Platform.OS === 'web') {
       let map = (window as any)._orderTrackingMap;
       
       if (!map) {
-        map = L.map(mapId).setView([lat, lng], 15);
+        map = L.map(mapId).setView([lat, lng], 50);
         (window as any)._orderTrackingMap = map;
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors',
@@ -33,33 +33,31 @@ if (Platform.OS === 'web') {
         
         // SOLUÇÃO: Usar caminho da pasta public
         const customIcon = L.icon({
-          iconUrl: '/images/pin-me.png', // Caminho direto da pasta public
+          iconUrl: '/images/pin-me.png',
           iconSize: [80, 80],
-          iconAnchor: [20, 40],
-          popupAnchor: [20, -50],
+          iconAnchor: [40, 80], // metade da largura, altura total
+          popupAnchor: [0, -80],
           shadowUrl: null,
         });
         
         L.marker([lat, lng], { icon: customIcon })
           .addTo(map)
-          .bindPopup('Você está aqui')
-          .openPopup();
+          .bindPopup('Você está aqui');
       } else {
         map.setView([lat, lng], 15);
         if (map._lastMarker) map.removeLayer(map._lastMarker);
         
         const customIcon = L.icon({
-          iconUrl: '/images/pin-me.png', // Mesmo caminho
+          iconUrl: '/images/pin-me.png',
           iconSize: [40, 40],
-          iconAnchor: [20, 40],
-          popupAnchor: [20, -50],
+          iconAnchor: [20, 40], // metade da largura, altura total
+          popupAnchor: [0, -40],
           shadowUrl: null,
         });
         
         map._lastMarker = L.marker([lat, lng], { icon: customIcon })
           .addTo(map)
-          .bindPopup('Você está aqui')
-          .openPopup();
+          .bindPopup('Você está aqui');
       }
       return () => {};
     }, [lat, lng]);
