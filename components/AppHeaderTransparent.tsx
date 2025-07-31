@@ -6,9 +6,10 @@ import Icon from 'react-native-vector-icons/Feather';
 
 interface AppHeaderTransparentProps {
   onBack?: () => void;
+  showCart?: boolean;
 }
 
-const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack }) => {
+const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack, showCart = true }) => {
   const router = useRouter();
   const [cartCount, setCartCount] = React.useState(0);
 
@@ -52,29 +53,31 @@ const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack }) =
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
         {/* Botão de carrinho à direita */}
-        <TouchableOpacity
-          style={styles.cartButton}
-          onPress={() => router.push('/cart')}
-        >
-          <Icon name="shopping-cart" size={24} color="#fff" />
-          {cartCount > 0 && (
-            <View style={{
-              position: 'absolute',
-              top: 2,
-              right: 2,
-              backgroundColor: '#FF7A00',
-              borderRadius: 10,
-              minWidth: 18,
-              height: 18,
-              justifyContent: 'center',
-              alignItems: 'center',
-              paddingHorizontal: 4,
-              zIndex: 10,
-            }}>
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>{cartCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        {showCart && (
+          <TouchableOpacity
+            style={styles.cartButton}
+            onPress={() => router.push('/cart')}
+          >
+            <Icon name="shopping-cart" size={24} color="#fff" />
+            {cartCount > 0 && (
+              <View style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                backgroundColor: '#FF7A00',
+                borderRadius: 10,
+                minWidth: 18,
+                height: 18,
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingHorizontal: 4,
+                zIndex: 10,
+              }}>
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>{cartCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </>
   );

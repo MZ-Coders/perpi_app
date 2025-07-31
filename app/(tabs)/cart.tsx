@@ -3,8 +3,9 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, DeviceEventEmitter, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { useAuthUser } from '../hooks/useAuthUser';
-import { supabase } from '../lib/supabaseClient';
+import AppHeaderTransparent from '../../components/AppHeaderTransparent';
+import { useAuthUser } from '../../hooks/useAuthUser';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -158,6 +159,10 @@ export default function CartScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 100 }}>
+        <AppHeaderTransparent onBack={() => router.back()} showCart={false} />
+      </View>
+      <View style={{ height: 80 }} />
       <Text style={styles.title}>Meu Carrinho</Text>
       {success && (
         <View style={{ backgroundColor: '#008A44', padding: 16, borderRadius: 8, marginBottom: 16 }}>
@@ -175,7 +180,7 @@ export default function CartScreen() {
           renderItem={({ item }) => (
             <View style={styles.cartItemRow}>
               <Image
-                source={item.image_url ? { uri: item.image_url } : require('../assets/images/placeholder-Products.jpg')}
+                source={item.image_url ? { uri: item.image_url } : require('../../assets/images/placeholder-Products.jpg')}
                 style={styles.cartItemImgLarge}
               />
               <View style={{ flex: 1 }}>
