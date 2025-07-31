@@ -1,8 +1,8 @@
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Icon from 'react-native-vector-icons/Feather';
-import { useRouter } from 'expo-router';
 
 interface AppHeaderTransparentProps {
   onBack?: () => void;

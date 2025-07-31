@@ -1,17 +1,17 @@
-
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 import { useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Image, Platform, StyleSheet, Text, View } from 'react-native';
+import AppHeaderTransparent from '../../components/AppHeaderTransparent';
+
+// Para mobile, mantém o require
+const pinMeIcon = require('../../assets/images/pin-me.png');
 
 // Para web: importar Leaflet
 let MapComponent: React.FC<any> = () => null;
 if (Platform.OS === 'web') {
   // @ts-ignore
-  // eslint-disable-next-line
   MapComponent = ({ lat, lng }: { lat: number; lng: number }) => {
     React.useEffect(() => {
-      // Adiciona o CSS do Leaflet
       if (!document.getElementById('leaflet-css')) {
         const link = document.createElement('link');
         link.id = 'leaflet-css';
@@ -19,35 +19,83 @@ if (Platform.OS === 'web') {
         link.href = 'https://unpkg.com/leaflet/dist/leaflet.css';
         document.head.appendChild(link);
       }
-      // Adiciona o mapa
+      
       const L = require('leaflet');
       const mapId = 'order-tracking-map';
       let map = (window as any)._orderTrackingMap;
+      
       if (!map) {
         map = L.map(mapId).setView([lat, lng], 15);
         (window as any)._orderTrackingMap = map;
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors',
         }).addTo(map);
-        L.marker([lat, lng]).addTo(map).bindPopup('Você').openPopup();
-      } 
-      else {
-        map.setView([lat, lng], 15);
-        if (map._lastMarker){
-            map.removeLayer(map._lastMarker);
-        } 
         
-        else {
-          map._lastMarker = L.marker([lat, lng]).addTo(map).bindPopup('Você 2').openPopup();
-        }
+        // SOLUÇÃO: Usar caminho da pasta public
+        const customIcon = L.icon({
+          iconUrl: '/images/pin-me.png', // Caminho direto da pasta public
+          iconSize: [80, 80],
+          iconAnchor: [20, 40],
+          popupAnchor: [20, -50],
+          shadowUrl: null,
+        });
+        
+        L.marker([lat, lng], { icon: customIcon })
+          .addTo(map)
+          .bindPopup('Você está aqui')
+          .openPopup();
+      } else {
+        map.setView([lat, lng], 15);
+        if (map._lastMarker) map.removeLayer(map._lastMarker);
+        
+        const customIcon = L.icon({
+          iconUrl: '/images/pin-me.png', // Mesmo caminho
+          iconSize: [40, 40],
+          iconAnchor: [20, 40],
+          popupAnchor: [20, -50],
+          shadowUrl: null,
+        });
+        
+        map._lastMarker = L.marker([lat, lng], { icon: customIcon })
+          .addTo(map)
+          .bindPopup('Você está aqui')
+          .openPopup();
       }
-      return () => {
-        // Não remove o mapa para evitar problemas de re-render
-      };
+      return () => {};
     }, [lat, lng]);
-    // Full screen: ocupa toda a tela, header fica por cima
-    return <div id="order-tracking-map" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1 }} />;
+    
+    return <div id="order-tracking-map" style={{ 
+      position: 'fixed', 
+      top: 0, 
+      left: 0, 
+      width: '100vw', 
+      height: '100vh', 
+      zIndex: 1 
+    }} />;
   };
+} else {
+  // Mobile: usar require normal
+  MapComponent = ({ lat, lng }: { lat: number; lng: number }) => (
+    <View style={{ 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      backgroundColor: '#FDFDFB' 
+    }}>
+      <Image
+        source={pinMeIcon}
+        style={{ width: 64, height: 64 }}
+        resizeMode="contain"
+      />
+      <Text style={{ 
+        marginTop: 16, 
+        color: '#008A44', 
+        fontWeight: 'bold' 
+      }}>
+        Sua localização
+      </Text>
+    </View>
+  );
 }
 
 export default function OrderTrackingScreen() {
@@ -64,6 +112,7 @@ export default function OrderTrackingScreen() {
             setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           },
           (err) => {
+            console.error('Erro de geolocalização:', err);
             setLocError('Não foi possível obter sua localização.');
           }
         );
@@ -71,21 +120,36 @@ export default function OrderTrackingScreen() {
         setLocError('Geolocalização não suportada.');
       }
     } else {
-      // Para mobile, pode usar expo-location futuramente
       setLocError('Mapa disponível apenas na versão web.');
     }
   }, []);
 
   return (
     <View style={styles.container}>
-      {Platform.OS === 'web' && location && <MapComponent lat={location.lat} lng={location.lng} />}
-      {/* Header transparente absoluto sobre o mapa */}
-      <View style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 100 }}>
+      {location && <MapComponent lat={location.lat} lng={location.lng} />}
+      
+      <View style={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        width: '100%', 
+        zIndex: 100 
+      }}>
         <AppHeaderTransparent />
       </View>
+      
       {locError && (
-        <View style={{ position: 'absolute', top: 80, left: 0, width: '100%', zIndex: 200, alignItems: 'center' }}>
-          <Text style={{ color: '#FF3B30', marginBottom: 16 }}>{locError}</Text>
+        <View style={{ 
+          position: 'absolute', 
+          top: 80, 
+          left: 0, 
+          width: '100%', 
+          zIndex: 200, 
+          alignItems: 'center' 
+        }}>
+          <Text style={{ color: '#FF3B30', marginBottom: 16 }}>
+            {locError}
+          </Text>
         </View>
       )}
     </View>
@@ -96,33 +160,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FDFDFB',
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#008A44',
-    marginBottom: 12,
-  },
-  orderId: {
-    fontSize: 18,
-    color: '#5C5C5C',
-    marginBottom: 24,
-  },
-  status: {
-    fontSize: 20,
-    color: '#FF7A00',
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  info: {
-    fontSize: 16,
-    color: '#5C5C5C',
-    textAlign: 'center',
   },
 });
