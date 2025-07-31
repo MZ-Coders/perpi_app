@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, View } from 'react-native';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
@@ -28,7 +28,7 @@ if (Platform.OS === 'web') {
         map = L.map(mapId).setView([lat, lng], 50);
         (window as any)._orderTrackingMap = map;
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
+          attribution: '©Perpi 2025',
         }).addTo(map);
         
         // SOLUÇÃO: Usar caminho da pasta public
@@ -133,7 +133,7 @@ export default function OrderTrackingScreen() {
         width: '100%', 
         zIndex: 100 
       }}>
-        <AppHeaderTransparent />
+        <AppHeaderTransparent onBack={() => router.replace('/orders')} />
       </View>
       
       {locError && (
