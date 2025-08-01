@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
+import ProductsSkeleton from '../../components/ProductsSkeleton';
 const FAVORITES_ID = '__favoritos__';
 
 
@@ -550,21 +551,25 @@ export default function ProductCatalogScreen() {
             </View>
           </View>
           
-          {/* Lista de produtos */}
-          <FlatList
-            data={filtered}
-            key={viewType}
-            keyExtractor={item => item.id.toString()}
-            numColumns={viewType === 'grid' ? 2 : 1}
-            renderItem={renderProduct}
-            contentContainerStyle={{ paddingBottom: 32 }}
-            ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
-            refreshing={loading}
-            onRefresh={() => {}}
-            nestedScrollEnabled={true}
-            scrollEnabled={false}
-            scrollToOverflowEnabled={true}
-          />
+          {/* Lista de produtos ou skeleton */}
+          {loading ? (
+            <ProductsSkeleton />
+          ) : (
+            <FlatList
+              data={filtered}
+              key={viewType}
+              keyExtractor={item => item.id.toString()}
+              numColumns={viewType === 'grid' ? 2 : 1}
+              renderItem={renderProduct}
+              contentContainerStyle={{ paddingBottom: 32 }}
+              ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
+              refreshing={loading}
+              onRefresh={() => {}}
+              nestedScrollEnabled={true}
+              scrollEnabled={false}
+              scrollToOverflowEnabled={true}
+            />
+          )}
         </ScrollView>
       </View>
     </View>
