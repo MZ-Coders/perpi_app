@@ -1,3 +1,5 @@
+import AppHeaderTransparent from '@/components/AppHeaderTransparent';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
@@ -5,6 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 
 
 export default function ProfileScreen() {
+  const params = useLocalSearchParams();
   const [user, setUser] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({ nome: '', sobrenome: '', celular: '', profile_picture_url: '' });
@@ -119,8 +122,19 @@ export default function ProfileScreen() {
     }
   };
 
+  // Detecta se veio do menu: se tem param "fromMenu" (string ou number) ou se não pode voltar
+  const isFromMenu = params.fromMenu === '1' || params.fromMenu === 1 || !(router.canGoBack && router.canGoBack());
+
   return (
     <View style={styles.container}>
+      <View style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 100 }}>
+        <AppHeaderTransparent
+          onBack={() => router.back()}
+          showCart={false}
+          mode={isFromMenu ? 'menu' : 'back'}
+        />
+      </View>
+      
       <StatusBar backgroundColor="#008A44" barStyle="light-content" />
       
       <ScrollView 

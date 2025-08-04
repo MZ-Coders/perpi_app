@@ -3,7 +3,7 @@
 // Veja a documentação: https://docs.expo.dev/versions/latest/sdk/map-view/ e https://docs.expo.dev/versions/latest/sdk/location/
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 
 // Para mobile, mantém o require

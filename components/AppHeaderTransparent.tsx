@@ -1,15 +1,16 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
 interface AppHeaderTransparentProps {
   onBack?: () => void;
   showCart?: boolean;
+  mode?: 'back' | 'menu';
 }
 
-const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack, showCart = true }) => {
+const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack, showCart = true, mode = 'back' }) => {
   const router = useRouter();
   const [cartCount, setCartCount] = React.useState(0);
 
@@ -44,13 +45,25 @@ const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack, sho
     <>
       <StatusBar style="light" translucent backgroundColor="transparent" />
       <View style={styles.headerRow}>
-        {/* Botão de voltar personalizado */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={onBack ? onBack : () => router.back()}
-        >
-          <Icon name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
+        {/* Botão de voltar ou menu personalizado */}
+        {mode === 'menu' ? (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => {
+              // Emite evento para abrir drawer (deve ser capturado pelo layout do Drawer)
+              DeviceEventEmitter.emit('openDrawer');
+            }}
+          >
+            <Icon name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={onBack ? onBack : () => router.back()}
+          >
+            <Icon name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
         <View style={{ flex: 1 }} />
         {/* Botão de carrinho à direita */}
         {showCart && (

@@ -7,9 +7,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import ProductsSkeleton from '../../components/ProductsSkeleton';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
-import ProductsSkeleton from '../../components/ProductsSkeleton';
 const FAVORITES_ID = '__favoritos__';
 
 

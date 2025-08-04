@@ -1,21 +1,21 @@
-import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { 
-  FlatList, 
-  Image, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  View, 
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
   Animated,
+  Dimensions,
+  FlatList,
+  Image,
   Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-  Dimensions 
+  View
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import OrdersSkeleton from '../../components/OrdersSkeleton';
-import { router } from 'expo-router';
 import AppHeader from '../../components/AppHeader';
+import OrdersSkeleton from '../../components/OrdersSkeleton';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import { supabase } from '../../lib/supabaseClient';
 
