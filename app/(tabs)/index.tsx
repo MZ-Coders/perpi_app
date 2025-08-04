@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ProductsSkeleton from '../../components/ProductsSkeleton';
+import { ProductListRefresh, usePullToRefresh } from '../../components/PullToRefresh';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
 import { emitCartUpdated, listenToCartUpdates } from '../../utils/cartEvents';
@@ -249,35 +250,42 @@ export default function ProductCatalogScreen() {
 
 
 
-  // Busca produtos e categorias do Supabase
-  React.useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        // Importa o cliente do Supabase
-        const { supabase } = await import('../../lib/supabaseClient');
-        // Busca categorias
-        const { data: catData, error: catError } = await supabase
-          .from('categories')
-          .select('*')
-          .order('name', { ascending: true });
-        if (catError) throw catError;
-        setCategories(catData || []);
+  // Função para buscar produtos e categorias (separada para reutilizar no refresh)
+  const fetchData = async () => {
+    try {
+      // Importa o cliente do Supabase
+      const { supabase } = await import('../../lib/supabaseClient');
+      // Busca categorias
+      const { data: catData, error: catError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true });
+      if (catError) throw catError;
+      setCategories(catData || []);
 
-        // Busca produtos
-        const { data: prodData, error: prodError } = await supabase
-          .from('products')
-          .select('*')
-          .order('name', { ascending: true });
-        if (prodError) throw prodError;
-        setProducts(prodData || []);
-      } catch (err) {
-        console.error('Erro ao buscar dados do Supabase:', err);
-      } finally {
-        setLoading(false);
-      }
+      // Busca produtos
+      const { data: prodData, error: prodError } = await supabase
+        .from('products')
+        .select('*')
+        .order('name', { ascending: true });
+      if (prodError) throw prodError;
+      setProducts(prodData || []);
+    } catch (err) {
+      console.error('Erro ao buscar dados do Supabase:', err);
     }
-    fetchData();
+  };
+
+  // Hook para pull-to-refresh
+  const { refreshing, onRefresh } = usePullToRefresh(fetchData);
+
+  // Busca produtos e categorias do Supabase na montagem inicial
+  React.useEffect(() => {
+    async function fetchInitialData() {
+      setLoading(true);
+      await fetchData();
+      setLoading(false);
+    }
+    fetchInitialData();
   }, []);
 
   // Filtra produtos por categoria, favoritos e busca
@@ -516,13 +524,18 @@ export default function ProductCatalogScreen() {
 
       <View style={{ flex: 1 }}>
         {/* Conteúdo scrollável com marginTop para compensar header e busca */}
-        <ScrollView
-          style={[styles.scrollableContent, { marginTop: -210 }]} 
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-          showsVerticalScrollIndicator={true}
-          bounces={true}
-          scrollEventThrottle={16}
-          onScroll={handleScroll}
+        <ProductListRefresh
+          renderType="scroll"
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+          scrollViewProps={{
+            style: [styles.scrollableContent, { marginTop: -210 }],
+            contentContainerStyle: { flexGrow: 1, paddingBottom: 20 },
+            showsVerticalScrollIndicator: true,
+            bounces: true,
+            scrollEventThrottle: 16,
+            onScroll: handleScroll,
+          }}
         >
           {/* Filtro de categorias */}
           <View style={styles.categoryContainer}>
@@ -566,14 +579,12 @@ export default function ProductCatalogScreen() {
               renderItem={renderProduct}
               contentContainerStyle={{ paddingBottom: 32 }}
               ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
-              refreshing={loading}
-              onRefresh={() => {}}
               nestedScrollEnabled={true}
               scrollEnabled={false}
               scrollToOverflowEnabled={true}
             />
           )}
-        </ScrollView>
+        </ProductListRefresh>
       </View>
     </View>
   );

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, DeviceEventEmitter, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, DeviceEventEmitter, FlatList, Image, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 import { useAuthUser } from '../../hooks/useAuthUser';
@@ -23,7 +23,54 @@ export default function CartScreen() {
   // Estado de sucesso
   const [success, setSuccess] = useState(false);
 
+  // Estado do modal de confirmação
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
+  // Animação do modal
+  const modalAnimation = React.useRef(new Animated.Value(0)).current;
+  const scaleAnimation = React.useRef(new Animated.Value(0.7)).current;
+
+  // Função para abrir modal de confirmação
+  function showPurchaseConfirmation() {
+    setShowConfirmModal(true);
+    // Animar entrada do modal
+    Animated.parallel([
+      Animated.timing(modalAnimation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnimation, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }
+
+  // Função para fechar modal de confirmação
+  function hideConfirmModal() {
+    Animated.parallel([
+      Animated.timing(modalAnimation, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnimation, {
+        toValue: 0.7,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowConfirmModal(false);
+    });
+  }
+
   async function handleRealPurchase() {
+    // Fechar modal de confirmação primeiro
+    hideConfirmModal();
+    
     if (!USER_ID) return;
     if (cartItems.length === 0) return;
     setLoading(true);
@@ -208,7 +255,7 @@ export default function CartScreen() {
       {user ? (
         <TouchableOpacity
           style={[styles.buyBtn, cartItems.length === 0 && { opacity: 0.6 }]}
-          onPressOut={handleRealPurchase}
+          onPressOut={showPurchaseConfirmation}
           disabled={cartItems.length === 0 || loading}
         >
           {loading ? (
@@ -225,6 +272,78 @@ export default function CartScreen() {
           <Text style={styles.buyBtnText}>Fazer login para comprar</Text>
         </TouchableOpacity>
       )}
+
+      {/* Modal de Confirmação de Compra */}
+      <Modal
+        transparent
+        visible={showConfirmModal}
+        animationType="none"
+        onRequestClose={hideConfirmModal}
+      >
+        <Animated.View
+          style={[
+            styles.modalOverlay,
+            {
+              opacity: modalAnimation,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={hideConfirmModal}
+          />
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [{ scale: scaleAnimation }],
+                opacity: modalAnimation,
+              },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Icon name="shopping-bag" size={48} color="#008A44" />
+              <Text style={styles.modalTitle}>Confirmar Compra</Text>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={styles.modalText}>
+                Você está prestes a finalizar sua compra com {cartItems.length} item(s) no valor total de:
+              </Text>
+              <Text style={styles.modalTotal}>
+                MZN {cartItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2)}
+              </Text>
+              <Text style={styles.modalSubtext}>
+                Deseja continuar com o pagamento via M-Pesa?
+              </Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={hideConfirmModal}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={handleRealPurchase}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Icon name="check" size={18} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.modalConfirmText}>Confirmar</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
     </View>
   );
 }
@@ -253,5 +372,110 @@ const styles = StyleSheet.create({
   cartTotalLabel: { fontSize: 18, fontWeight: 'bold', color: '#008A44' },
   cartTotalValue: { fontSize: 20, fontWeight: 'bold', color: '#FF7A00' },
   buyBtn: { marginTop: 28, backgroundColor: '#FF7A00', borderRadius: 8, paddingVertical: 16, alignItems: 'center', elevation: 1 },
-  buyBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 }
+  buyBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  
+  // Estilos do Modal de Confirmação
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  modalBody: {
+    marginBottom: 24,
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#5C5C5C',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  modalTotal: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FF7A00',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  modalSubtext: {
+    fontSize: 14,
+    color: '#8A8A8A',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  modalCancelText: {
+    color: '#5C5C5C',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    backgroundColor: '#008A44',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: '#008A44',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalConfirmText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });

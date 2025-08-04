@@ -11,7 +11,6 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({ nome: '', sobrenome: '', celular: '', profile_picture_url: '' });
-  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -122,8 +121,8 @@ export default function ProfileScreen() {
     }
   };
 
-  // Detecta se veio do menu: se tem param "fromMenu" (string ou number) ou se não pode voltar
-  const isFromMenu = params.fromMenu === '1' || params.fromMenu === 1 || !(router.canGoBack && router.canGoBack());
+  // Detecta se veio do menu: se tem param "fromMenu" ou se não pode voltar
+  const isFromMenu = params.fromMenu === '1' || !(router.canGoBack && router.canGoBack());
 
   return (
     <View style={styles.container}>
@@ -161,9 +160,19 @@ export default function ProfileScreen() {
               </View>
             )}
             {editMode && (
-              <Text style={styles.avatarHint}>Adicione uma URL de imagem abaixo</Text>
+              <Text style={styles.avatarHint}>Adicione uma URL de imagem no campo abaixo</Text>
             )}
           </View>
+
+          {/* User Info Header */}
+          {!editMode && (
+            <View style={styles.userInfoHeader}>
+              <Text style={styles.userName}>
+                {user?.nome && user?.sobrenome ? `${user.nome} ${user.sobrenome}` : 'Usuário'}
+              </Text>
+              <Text style={styles.userEmail}>{user?.email}</Text>
+            </View>
+          )}
 
           {/* Form Section */}
           <View style={styles.formSection}>
@@ -217,24 +226,32 @@ export default function ProfileScreen() {
               </View>
             ) : (
               <View style={styles.infoSection}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Nome</Text>
-                  <Text style={styles.infoValue}>{user?.nome || 'Não informado'}</Text>
+                <View style={styles.infoGroup}>
+                  <Text style={styles.infoGroupTitle}>INFORMAÇÕES PESSOAIS</Text>
+                  
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Nome</Text>
+                    <Text style={styles.infoValue}>{user?.nome || 'Não informado'}</Text>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Sobrenome</Text>
+                    <Text style={styles.infoValue}>{user?.sobrenome || 'Não informado'}</Text>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Celular</Text>
+                    <Text style={styles.infoValue}>{user?.celular || 'Não informado'}</Text>
+                  </View>
                 </View>
 
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Sobrenome</Text>
-                  <Text style={styles.infoValue}>{user?.sobrenome || 'Não informado'}</Text>
-                </View>
-
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Email</Text>
-                  <Text style={styles.infoValue}>{user?.email || 'Não informado'}</Text>
-                </View>
-
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Celular</Text>
-                  <Text style={styles.infoValue}>{user?.celular || 'Não informado'}</Text>
+                <View style={styles.infoGroup}>
+                  <Text style={styles.infoGroupTitle}>CONTA</Text>
+                  
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Email</Text>
+                    <Text style={styles.infoValue}>{user?.email || 'Não informado'}</Text>
+                  </View>
                 </View>
               </View>
             )}
@@ -270,28 +287,6 @@ export default function ProfileScreen() {
               <Text style={styles.primaryButtonText}>EDITAR PERFIL</Text>
             </TouchableOpacity>
           )}
-
-          <TouchableOpacity
-            style={styles.tertiaryButton}
-            disabled={recovering}
-            onPress={async () => {
-              setRecovering(true);
-              try {
-                // @ts-ignore
-                const navigation = require('expo-router').useRouter();
-                navigation.push('/password-recovery');
-                setTimeout(() => setRecovering(false), 1000);
-              } catch (e) {
-                setRecovering(false);
-                Alert.alert('Navegação', 'Acesse a tela de recuperação de senha pelo menu principal.');
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.tertiaryButtonText}>
-              {recovering ? 'ABRINDO...' : 'RECUPERAR SENHA'}
-            </Text>
-          </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.logoutButton} 
@@ -338,20 +333,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: -20,
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 20,
+    padding: 28,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   avatarSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
   },
   avatar: {
     width: 100,
@@ -397,12 +392,33 @@ const styles = StyleSheet.create({
     color: '#5C5C5C',
     marginTop: 8,
     textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  userInfoHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  userEmail: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#5C5C5C',
+    textAlign: 'center',
   },
   formSection: {
     flex: 1,
   },
   editForm: {
-    gap: 20,
+    gap: 24,
   },
   inputGroup: {
     gap: 8,
@@ -419,17 +435,37 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 8,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
     color: '#1A1A1A',
-    fontWeight: '400',
+    fontWeight: '500',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   infoSection: {
-    gap: 20,
+    gap: 24,
+  },
+  infoGroup: {
+    gap: 16,
+  },
+  infoGroupTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#008A44',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 8,
   },
   infoRow: {
-    gap: 4,
+    gap: 6,
+    paddingVertical: 8,
   },
   infoLabel: {
     fontSize: 12,
@@ -440,14 +476,20 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 16,
-    fontWeight: '400',
+    fontWeight: '500',
     color: '#1A1A1A',
     paddingVertical: 4,
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: '#008A44',
   },
   actionSection: {
     paddingHorizontal: 16,
-    paddingTop: 24,
-    gap: 12,
+    paddingTop: 32,
+    paddingBottom: 16,
+    gap: 16,
   },
   editActions: {
     gap: 12,
@@ -488,27 +530,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  tertiaryButton: {
-    backgroundColor: '#FF7A00',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    opacity: 0.9,
-  },
-  tertiaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
   logoutButton: {
     backgroundColor: '#FF3B30',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 8,
+    shadowColor: '#FF3B30',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoutButtonText: {
     color: '#FFFFFF',

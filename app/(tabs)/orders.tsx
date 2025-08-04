@@ -16,13 +16,13 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppHeader from '../../components/AppHeader';
 import OrdersSkeleton from '../../components/OrdersSkeleton';
+import { OrdersListRefresh, usePullToRefresh } from '../../components/PullToRefresh';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import { supabase } from '../../lib/supabaseClient';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function OrdersScreen() {
-
   const [showSuccess, setShowSuccess] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
@@ -31,6 +31,62 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
+  const [expandedOrders, setExpandedOrders] = useState<{ [orderId: number]: boolean }>({});
+
+  // Função para buscar pedidos (separada para reutilizar no refresh)
+  const fetchOrders = async () => {
+    if (!USER_ID) return;
+    
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer_id', USER_ID)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      setOrders(data || []);
+      
+      // Fetch order items for each order
+      if (data && data.length > 0) {
+        const orderIds = data.map((order: any) => order.id);
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*')
+          .in('order_id', orderIds);
+          
+        if (!itemsError && itemsData) {
+          // Fetch products for all items
+          const productIds = [...new Set(itemsData.map((item: any) => item.product_id))];
+          const { data: productsData } = await supabase
+            .from('products')
+            .select('id, name, image_url')
+            .in('id', productIds);
+            
+          // Group items by order_id and attach product info
+          const grouped: { [orderId: number]: any[] } = {};
+          itemsData.forEach((item: any) => {
+            const product = productsData?.find((p: any) => p.id === item.product_id);
+            if (!grouped[item.order_id]) grouped[item.order_id] = [];
+            grouped[item.order_id].push({ ...item, product });
+          });
+          setOrderItems(grouped);
+        }
+      } else {
+        setOrderItems({});
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar pedidos');
+      console.error('Erro ao buscar pedidos:', err);
+    }
+  };
+
+  // Hook para pull-to-refresh
+  const { refreshing, onRefresh } = usePullToRefresh(fetchOrders);
 
   useEffect(() => {
     (async () => {
@@ -71,40 +127,11 @@ export default function OrdersScreen() {
           await AsyncStorage.removeItem('showOrderSuccess');
         }, 3000);
       }
-      if (!USER_ID) return;
+      
+      // Carregamento inicial
       setLoading(true);
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('customer_id', USER_ID)
-        .order('created_at', { ascending: false });
-      if (error) setError(error.message);
-      else setOrders(data || []);
+      await fetchOrders();
       setLoading(false);
-      // Fetch order items for each order
-      if (data && data.length > 0) {
-        const orderIds = data.map((order: any) => order.id);
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select('*')
-          .in('order_id', orderIds);
-        if (!itemsError && itemsData) {
-          // Fetch products for all items
-          const productIds = [...new Set(itemsData.map((item: any) => item.product_id))];
-          const { data: productsData } = await supabase
-            .from('products')
-            .select('id, name, image_url')
-            .in('id', productIds);
-          // Group items by order_id and attach product info
-          const grouped: { [orderId: number]: any[] } = {};
-          itemsData.forEach((item: any) => {
-            const product = productsData?.find((p: any) => p.id === item.product_id);
-            if (!grouped[item.order_id]) grouped[item.order_id] = [];
-            grouped[item.order_id].push({ ...item, product });
-          });
-          setOrderItems(grouped);
-        }
-      }
     })();
   }, [USER_ID]);
 
@@ -176,10 +203,6 @@ const getStatusIcon = (status: string) => {
       minute: '2-digit'
     });
   };
-
-
-  const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
-  const [expandedOrders, setExpandedOrders] = useState<{ [orderId: number]: boolean }>({});
 
   const toggleAccordion = (orderId: number) => {
     setExpandedOrders((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
@@ -352,7 +375,14 @@ const getStatusIcon = (status: string) => {
           <Text style={styles.errorIcon}>⚠️</Text>
           <Text style={styles.errorTitle}>Oops! Algo deu errado</Text>
           <Text style={styles.errorMessage}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton}>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={async () => {
+              setLoading(true);
+              await fetchOrders();
+              setLoading(false);
+            }}
+          >
             <Text style={styles.retryButtonText}>Tentar Novamente</Text>
           </TouchableOpacity>
         </View>
@@ -371,14 +401,20 @@ const getStatusIcon = (status: string) => {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={orders}
-          keyExtractor={item => item.id.toString()}
-          renderItem={renderOrderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
+        <OrdersListRefresh
+          renderType="flatlist"
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+        >
+          <FlatList
+            data={orders}
+            keyExtractor={item => item.id.toString()}
+            renderItem={renderOrderItem}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
+        </OrdersListRefresh>
       )}
     </View>
   );
