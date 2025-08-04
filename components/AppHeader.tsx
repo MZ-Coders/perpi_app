@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuthUser } from '../hooks/useAuthUser';
+import { listenToCartUpdates } from '../utils/cartEvents';
 
 interface AppHeaderProps {
   title?: string;
@@ -37,12 +38,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart
         }
       });
     }
+    
+    // Sincroniza inicialmente
     syncCart();
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('cartUpdated', syncCart);
-      return () => window.removeEventListener('cartUpdated', syncCart);
-    }
-    return undefined;
+    
+    // Escuta eventos de atualização do carrinho usando utilitário
+    return listenToCartUpdates(syncCart);
   }, []);
 
   // Busca perfil se quiser mostrar avatar

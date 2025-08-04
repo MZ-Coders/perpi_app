@@ -10,6 +10,7 @@ import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, Text
 import ProductsSkeleton from '../../components/ProductsSkeleton';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import CategoryFilter from '../components/CategoryFilter';
+import { emitCartUpdated, listenToCartUpdates } from '../../utils/cartEvents';
 const FAVORITES_ID = '__favoritos__';
 
 
@@ -137,6 +138,9 @@ export default function ProductCatalogScreen() {
       }
       AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
         console.log('[Cart] Cart persisted to AsyncStorage:', newCart);
+        
+        // Dispara evento para atualização instantânea em todos os headers
+        emitCartUpdated();
       });
       console.log('[Cart] New cart state after toggle:', newCart);
       return newCart;
@@ -162,14 +166,12 @@ export default function ProductCatalogScreen() {
         }
       });
     }
+    
+    // Sincroniza inicialmente
     syncCart();
-    // Só adiciona o event listener no web
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('cartUpdated', syncCart);
-      return () => window.removeEventListener('cartUpdated', syncCart);
-    }
-    // No mobile, não faz nada
-    return undefined;
+    
+    // Escuta eventos de atualização do carrinho usando utilitário
+    return listenToCartUpdates(syncCart);
   }, []);
 
   // Adiciona ou remove favorito
@@ -528,6 +530,7 @@ export default function ProductCatalogScreen() {
               categories={categories}
               selectedCategory={selectedCategory}
               onSelect={setSelectedCategory}
+              loading={loading}
             />
           </View>
 

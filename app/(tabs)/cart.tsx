@@ -6,6 +6,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import { supabase } from '../../lib/supabaseClient';
+import { emitCartUpdated } from '../../utils/cartEvents';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -124,13 +125,7 @@ export default function CartScreen() {
     setCartItems(newCart);
     AsyncStorage.setItem('cart', JSON.stringify(newCart));
     // Dispara evento para atualização global do carrinho
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-      // Web: dispara evento customizado
-      window.dispatchEvent(new Event('cartUpdated'));
-    } else {
-      // Mobile: DeviceEventEmitter
-      DeviceEventEmitter.emit('cartUpdated');
-    }
+    emitCartUpdated();
   }
 
   function handleRemoveItem(itemId: number) {

@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { DeviceEventEmitter, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import { listenToCartUpdates } from '../utils/cartEvents';
 
 interface AppHeaderTransparentProps {
   onBack?: () => void;
@@ -33,12 +34,12 @@ const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack, sho
         });
       });
     }
+    
+    // Sincroniza inicialmente
     syncCart();
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('cartUpdated', syncCart);
-      return () => window.removeEventListener('cartUpdated', syncCart);
-    }
-    return undefined;
+    
+    // Escuta eventos de atualização do carrinho usando utilitário
+    return listenToCartUpdates(syncCart);
   }, []);
 
   return (
