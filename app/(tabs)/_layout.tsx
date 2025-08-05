@@ -7,11 +7,23 @@ import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
-import { Platform, Text, TouchableOpacity } from 'react-native';
+import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { Colors } from '../../constants/Colors';
 import { useAuthUser } from '../../hooks/useAuthUser';
-import DrawerUserHeader from '../components/DrawerUserHeader';
+// Componente para exibir o logo do app no drawer
+function LogoHeader() {
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 32 }}>
+      <Image
+        source={require('../../assets/images/logo.jpeg')}
+        style={{ width: 95, height: 95, borderRadius: 26, marginBottom: 8 }}
+        resizeMode="contain"
+      />
+    </View>
+  );
+}
+// import DrawerUserHeader from '../components/DrawerUserHeader';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -75,7 +87,9 @@ export default function TabLayout() {
         ];
         return (
           <DrawerContentScrollView {...props}>
-            <DrawerUserHeader trigger={headerRefresh} />
+            {/* Exibe apenas o logo do app no topo do menu */}
+            <LogoHeader />
+            {/* Botão de login, sem avatar ou texto 'guest' */}
             {!user && (
               <TouchableOpacity
                 onPress={() => navigation.navigate('login')}
