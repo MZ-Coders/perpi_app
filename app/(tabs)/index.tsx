@@ -6,12 +6,12 @@ import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, FlatList, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ProductsSkeleton from '../../components/ProductsSkeleton';
 import { ProductListRefresh, usePullToRefresh } from '../../components/PullToRefresh';
 import { useAuthUser } from '../../hooks/useAuthUser';
-import CategoryFilter from '../components/CategoryFilter';
 import { emitCartUpdated, listenToCartUpdates } from '../../utils/cartEvents';
+import CategoryFilter from '../components/CategoryFilter';
 const FAVORITES_ID = '__favoritos__';
 
 

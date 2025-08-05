@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Animated, DeviceEventEmitter, FlatList, Image, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, FlatList, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 import { useAuthUser } from '../../hooks/useAuthUser';
@@ -22,6 +22,10 @@ export default function CartScreen() {
 
   // Estado de sucesso
   const [success, setSuccess] = useState(false);
+
+  // Animação de sucesso
+  const successAnimation = React.useRef(new Animated.Value(0)).current;
+  const successScaleAnimation = React.useRef(new Animated.Value(0.8)).current;
 
   // Estado do modal de confirmação
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -137,12 +141,42 @@ export default function CartScreen() {
       updateCart([]);
     setLoading(false);
     setSuccess(true);
+    
+    // Animar entrada da mensagem de sucesso
+    Animated.parallel([
+      Animated.timing(successAnimation, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(successScaleAnimation, {
+        toValue: 1,
+        tension: 60,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
     // Sinaliza sucesso para a tela de pedidos (cross-plataforma)
     await AsyncStorage.setItem('showOrderSuccess', '1');
     setTimeout(() => {
-      setSuccess(false);
-      router.back();
-    }, 1800);
+      // Animar saída
+      Animated.parallel([
+        Animated.timing(successAnimation, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(successScaleAnimation, {
+          toValue: 0.8,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setSuccess(false);
+        router.back();
+      });
+    }, 2500);
     } catch (err) {
       setLoading(false);
       // Exibe erro simples na tela
@@ -207,11 +241,36 @@ export default function CartScreen() {
       <View style={{ height: 80 }} />
       <Text style={styles.title}>Meu Carrinho</Text>
       {success && (
-        <View style={{ backgroundColor: '#008A44', padding: 16, borderRadius: 8, marginBottom: 16 }}>
-          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18, textAlign: 'center' }}>
-            Compra realizada com sucesso!
-          </Text>
-        </View>
+        <Animated.View 
+          style={[
+            styles.successContainer,
+            {
+              opacity: successAnimation,
+            }
+          ]}
+        >
+          <Animated.View 
+            style={[
+              styles.successCard,
+              {
+                transform: [{ scale: successScaleAnimation }],
+                opacity: successAnimation,
+              }
+            ]}
+          >
+            <View style={styles.successIconContainer}>
+              <Icon name="check-circle" size={64} color="#FFFFFF" />
+            </View>
+            <Text style={styles.successTitle}>Compra Realizada!</Text>
+            <Text style={styles.successMessage}>
+              Seu pedido foi confirmado com sucesso e já está sendo preparado.
+            </Text>
+            <View style={styles.successDivider} />
+            <Text style={styles.successSubtext}>
+              Você pode acompanhar o status do seu pedido na aba "Pedidos"
+            </Text>
+          </Animated.View>
+        </Animated.View>
       )}
       {cartItems.length === 0 ? (
         <Text style={styles.emptyText}>Seu carrinho está vazio.</Text>
@@ -373,6 +432,85 @@ const styles = StyleSheet.create({
   cartTotalValue: { fontSize: 20, fontWeight: 'bold', color: '#FF7A00' },
   buyBtn: { marginTop: 28, backgroundColor: '#FF7A00', borderRadius: 8, paddingVertical: 16, alignItems: 'center', elevation: 1 },
   buyBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  
+  // Estilos da mensagem de sucesso
+  successContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 138, 68, 0.96)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    padding: 20,
+  },
+  successCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 48,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 15,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 25,
+    elevation: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  successIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#008A44',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 32,
+    shadowColor: '#008A44',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  successTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 16,
+    letterSpacing: -0.5,
+  },
+  successMessage: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#5C5C5C',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  successDivider: {
+    width: 60,
+    height: 3,
+    backgroundColor: '#008A44',
+    borderRadius: 2,
+    marginBottom: 20,
+  },
+  successSubtext: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#8A8A8A',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   
   // Estilos do Modal de Confirmação
   modalOverlay: {

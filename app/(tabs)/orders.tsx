@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -88,52 +88,57 @@ export default function OrdersScreen() {
   // Hook para pull-to-refresh
   const { refreshing, onRefresh } = usePullToRefresh(fetchOrders);
 
-  useEffect(() => {
-    (async () => {
-      // Checa se deve mostrar modal de sucesso (cross-plataforma)
-      const flag = await AsyncStorage.getItem('showOrderSuccess');
-      if (flag === '1') {
-        setShowSuccess(true);
-        // Animação de entrada do modal
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            tension: 100,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]).start();
-        setTimeout(async () => {
-          // Animação de saída
+
+  // Atualiza pedidos e modal de sucesso ao focar a tela
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      (async () => {
+        // Checa se deve mostrar modal de sucesso (cross-plataforma)
+        const flag = await AsyncStorage.getItem('showOrderSuccess');
+        if (flag === '1' && isActive) {
+          setShowSuccess(true);
+          // Animação de entrada do modal
           Animated.parallel([
             Animated.timing(fadeAnim, {
-              toValue: 0,
-              duration: 250,
+              toValue: 1,
+              duration: 300,
               useNativeDriver: true,
             }),
-            Animated.timing(scaleAnim, {
-              toValue: 0.8,
-              duration: 250,
+            Animated.spring(scaleAnim, {
+              toValue: 1,
+              tension: 100,
+              friction: 8,
               useNativeDriver: true,
             }),
-          ]).start(() => {
-            setShowSuccess(false);
-          });
-          await AsyncStorage.removeItem('showOrderSuccess');
-        }, 3000);
-      }
-      
-      // Carregamento inicial
-      setLoading(true);
-      await fetchOrders();
-      setLoading(false);
-    })();
-  }, [USER_ID]);
+          ]).start();
+          setTimeout(async () => {
+            // Animação de saída
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 250,
+                useNativeDriver: true,
+              }),
+              Animated.timing(scaleAnim, {
+                toValue: 0.8,
+                duration: 250,
+                useNativeDriver: true,
+              }),
+            ]).start(() => {
+              if (isActive) setShowSuccess(false);
+            });
+            await AsyncStorage.removeItem('showOrderSuccess');
+          }, 3000);
+        }
+        // Sempre atualiza os pedidos ao focar
+        setLoading(true);
+        await fetchOrders();
+        setLoading(false);
+      })();
+      return () => { isActive = false; };
+    }, [USER_ID])
+  );
 
 const getStatusTextColor = (status: string) => {
   switch (status?.toLowerCase()) {

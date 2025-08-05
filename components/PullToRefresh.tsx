@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshControl, ScrollView, FlatList, StyleSheet } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 
 type PullToRefreshProps = {
   children: React.ReactNode;
