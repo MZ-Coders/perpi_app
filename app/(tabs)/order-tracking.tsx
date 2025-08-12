@@ -1,76 +1,7 @@
-// ATENÇÃO: Para funcionamento do mapa no mobile, instale as dependências abaixo:
-// expo install react-native-maps expo-location
-// Veja a documentação: https://docs.expo.dev/versions/latest/sdk/map-view/ e https://docs.expo.dev/versions/latest/sdk/location/
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Platform } from 'react-native';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
-
-// Para mobile, mantém o require
-const pinMeIcon = require('../../assets/images/pin-me.png');
-
-// Para web: importar Leaflet
-
-
-let MapComponent: React.FC<any>;
-if (Platform.OS === 'web') {
-  // @ts-ignore
-  MapComponent = ({ lat, lng }: { lat: number; lng: number }) => {
-    React.useEffect(() => {
-      if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link');
-        link.id = 'leaflet-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet/dist/leaflet.css';
-        document.head.appendChild(link);
-      }
-      const L = require('leaflet');
-      const mapId = 'order-tracking-map';
-      let map = (window as any)._orderTrackingMap;
-      if (!map) {
-        map = L.map(mapId).setView([lat, lng], 50);
-        (window as any)._orderTrackingMap = map;
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '©Perpi 2025',
-        }).addTo(map);
-        const customIcon = L.icon({
-          iconUrl: '/images/pin-me.png',
-          iconSize: [80, 80],
-          iconAnchor: [40, 80],
-          popupAnchor: [0, -80],
-          shadowUrl: null,
-        });
-        L.marker([lat, lng], { icon: customIcon })
-          .addTo(map)
-          .bindPopup('Você está aqui');
-      } else {
-        map.setView([lat, lng], 15);
-        if (map._lastMarker) map.removeLayer(map._lastMarker);
-        const customIcon = L.icon({
-          iconUrl: '/images/pin-me.png',
-          iconSize: [40, 40],
-          iconAnchor: [20, 40],
-          popupAnchor: [0, -40],
-          shadowUrl: null,
-        });
-        map._lastMarker = L.marker([lat, lng], { icon: customIcon })
-          .addTo(map)
-          .bindPopup('Você está aqui');
-      }
-      return () => {};
-    }, [lat, lng]);
-    return <div id="order-tracking-map" style={{ 
-      position: 'fixed', 
-      top: 0, 
-      left: 0, 
-      width: '100vw', 
-      height: '100vh', 
-      zIndex: 1 
-    }} />;
-  };
-} else {
-  MapComponent = require('./MapComponentMobile').default;
-}
 
 export default function OrderTrackingScreen() {
   const params = useLocalSearchParams();
@@ -80,6 +11,7 @@ export default function OrderTrackingScreen() {
 
   useEffect(() => {
     if (Platform.OS === 'web') {
+      // Web: usar navigator.geolocation
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -88,32 +20,62 @@ export default function OrderTrackingScreen() {
           (err) => {
             console.error('Erro de geolocalização:', err);
             setLocError('Não foi possível obter sua localização.');
+            // Localização padrão para Luanda
+            setLocation({ lat: -8.8355, lng: 13.2319 });
           }
         );
       } else {
         setLocError('Geolocalização não suportada.');
+        // Localização padrão para Luanda
+        setLocation({ lat: -8.8355, lng: 13.2319 });
       }
     } else {
-      // Mobile: usar expo-location para obter localização
-      (async () => {
-        try {
-          const { status } = await (await import('expo-location')).requestForegroundPermissionsAsync();
-          if (status !== 'granted') {
-            setLocError('Permissão de localização negada.');
-            return;
-          }
-          const locationObj = await (await import('expo-location')).getCurrentPositionAsync({});
-          setLocation({ lat: locationObj.coords.latitude, lng: locationObj.coords.longitude });
-        } catch (e) {
-          setLocError('Não foi possível obter sua localização.');
-        }
-      })();
+      // Mobile: usar uma localização padrão para teste
+      setLocation({ lat: -8.8355, lng: 13.2319 });
     }
   }, []);
 
   return (
     <View style={styles.container}>
-      {location && <MapComponent lat={location.lat} lng={location.lng} />}
+      {/* Para Mobile: Mostrar apenas placeholder com coordenadas */}
+      {Platform.OS !== 'web' && location && (
+        <View style={styles.mapPlaceholder}>
+          <Text style={styles.mapPlaceholderText}>
+            📍 Localização do Pedido
+          </Text>
+          <Text style={styles.coordinatesText}>
+            Lat: {location.lat.toFixed(6)}
+          </Text>
+          <Text style={styles.coordinatesText}>
+            Lng: {location.lng.toFixed(6)}
+          </Text>
+          <Text style={styles.deliveryText}>
+            Entrega sendo preparada...
+          </Text>
+        </View>
+      )}
+      
+      {/* Para Web: Implementar mapa em versão futura */}
+      {Platform.OS === 'web' && (
+        <View style={styles.webPlaceholder}>
+          <Text style={styles.webPlaceholderText}>
+            �️ Mapa Web
+          </Text>
+          {location && (
+            <>
+              <Text style={styles.coordinatesText}>
+                Lat: {location.lat.toFixed(6)}
+              </Text>
+              <Text style={styles.coordinatesText}>
+                Lng: {location.lng.toFixed(6)}
+              </Text>
+            </>
+          )}
+          <Text style={styles.deliveryText}>
+            Recurso de mapa será implementado em breve
+          </Text>
+        </View>
+      )}
       
       <View style={{ 
         position: 'absolute', 
@@ -147,5 +109,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FDFDFB',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E8',
+    padding: 20,
+  },
+  webPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    padding: 20,
+  },
+  mapPlaceholderText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  webPlaceholderText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1976D2',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  coordinatesText: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
+  deliveryText: {
+    fontSize: 16,
+    color: '#2E7D32',
+    marginTop: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

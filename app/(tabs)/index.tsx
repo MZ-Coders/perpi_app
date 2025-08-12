@@ -15,10 +15,7 @@ import CategoryFilter from '../components/CategoryFilter';
 const FAVORITES_ID = '__favoritos__';
 
 
-let SharedElement: any = null;
-if (Platform.OS !== 'web') {
-  SharedElement = require('react-native-shared-element').SharedElement;
-}
+import SharedElement from '../../components/SharedElement';
 // import AppHeader from '../../components/AppHeader';
 export default function ProductCatalogScreen() {
   const authUser = useAuthUser();

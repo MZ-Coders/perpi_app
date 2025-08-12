@@ -20,10 +20,7 @@ import ParallaxScrollView from '../../components/ParallaxScrollView';
 import { emitCartUpdated, listenToCartUpdates } from '../../utils/cartEvents';
 
 const { width } = Dimensions.get('window');
-let SharedElement: any = null;
-if (Platform.OS !== 'web') {
-  SharedElement = require('react-native-shared-element').SharedElement;
-}
+import SharedElement from '../../components/SharedElement';
 
 // Espera receber os dados do produto via params
 export default function ProductDetailScreen() {

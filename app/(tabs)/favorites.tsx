@@ -8,10 +8,7 @@ import { supabase } from '../../lib/supabaseClient';
 import CategoryFilter from '../components/CategoryFilter';
 
 
-let SharedElement: any = null;
-if (Platform.OS !== 'web') {
-  SharedElement = require('react-native-shared-element').SharedElement;
-}
+import SharedElement from '../../components/SharedElement';
 
 type Favorite = { id: number; product_id: number; products: any };
 
@@ -85,7 +82,7 @@ export default function FavoritesScreen() {
         <TouchableOpacity
           style={styles.gridCard}
           activeOpacity={0.9}
-          onPress={() => router.push({ pathname: '/product-detail', params: { ...item.products, sharedId, category_name } })}
+          onPress={() => router.push({ pathname: '/detalhes', params: { ...item.products, sharedId, category_name } })}
         >
           <View style={styles.imageContainer}>
             {Platform.OS === 'web' || !SharedElement ? (
@@ -117,7 +114,7 @@ export default function FavoritesScreen() {
       <TouchableOpacity
         style={styles.listItem}
         activeOpacity={0.9}
-        onPress={() => router.push({ pathname: '/product-detail', params: { ...item.products, sharedId, category_name } })}
+  onPress={() => router.push({ pathname: '/detalhes', params: { ...item.products, sharedId, category_name } })}
       >
         <View style={styles.listImageContainer}>
           {Platform.OS === 'web' || !SharedElement ? (
@@ -169,6 +166,7 @@ export default function FavoritesScreen() {
         categories={categories}
         selectedCategory={selectedCategory}
         onSelect={setSelectedCategory}
+        loading={loading}
       />
     </View>
   ];
