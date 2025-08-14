@@ -2,8 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 import type {
     AvaliacaoEntregador,
     Entregador,
-    FormularioCadastroEntregador,
-    Pedido
+    FormularioCadastroEntregador
 } from '../types/entregador';
 
 export class EntregadorService {
@@ -48,6 +47,17 @@ export class EntregadorService {
     }
   }
 
+  // Buscar entregador logado (alias para buscarEntregadorAtual)
+  static async buscarEntregadorLogado(): Promise<Entregador | null> {
+    try {
+      const { data } = await this.buscarEntregadorAtual();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar entregador logado:', error);
+      return null;
+    }
+  }
+
   // Atualizar disponibilidade
   static async atualizarDisponibilidade(disponivel: boolean): Promise<{ error: any }> {
     try {
@@ -66,15 +76,19 @@ export class EntregadorService {
   }
 
   // Buscar pedidos disponíveis
-  static async buscarPedidosDisponiveis(): Promise<{ data: Pedido[]; error: any }> {
+  static async buscarPedidosDisponiveis(): Promise<{ data: any[]; error: any }> {
     try {
       const { data, error } = await supabase
-        .from('pedidos')
+        .from('orders')
         .select(`
           *,
-          itens_pedido (*)
+          order_items (
+            *,
+            products (name)
+          )
         `)
-        .eq('status', 'novo')
+        .eq('order_status', 'pending')
+        .is('entregador_id', null)
         .order('created_at', { ascending: true });
 
       return { data: data || [], error };
@@ -84,28 +98,32 @@ export class EntregadorService {
   }
 
   // Buscar pedidos do entregador
-  static async buscarMeusPedidos(): Promise<{ data: Pedido[]; error: any }> {
+  static async buscarMeusPedidos(): Promise<{ data: any[]; error: any }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+    //   const { data: { user } } = await supabase.auth.getUser();
+    //   if (!user) throw new Error('Usuário não autenticado');
 
-      // Primeiro buscar o ID do entregador
-      const { data: entregador } = await supabase
-        .from('entregadores')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+    //   // Primeiro buscar o ID do entregador
+    //   const { data: entregador } = await supabase
+    //     .from('entregadores')
+    //     .select('id')
+    //     .eq('user_id', user.id)
+    //     .single();
 
-      if (!entregador) throw new Error('Entregador não encontrado');
+    //   if (!entregador) throw new Error('Entregador não encontrado');
 
       const { data, error } = await supabase
-        .from('pedidos')
+        .from('orders')
         .select(`
           *,
-          itens_pedido (*)
+          order_items (
+            *,
+            products (name)
+          )
         `)
-        .eq('entregador_id', entregador.id)
-        .in('status', ['atribuido', 'aceito', 'coletado', 'em_transito'])
+        // .eq('entregador_id', entregador.id)
+        .eq('entregador_id', '8be9dddd-b3a8-4248-80eb-f52f27e9e79e') // Substituir por lógica de ID do entregador
+        // .in('order_status', ['sent', 'preparing', 'ready', 'out_for_delivery'])
         .order('created_at', { ascending: false });
 
       return { data: data || [], error };
@@ -130,13 +148,13 @@ export class EntregadorService {
       if (!entregador) throw new Error('Entregador não encontrado');
 
       const { error } = await supabase
-        .from('pedidos')
+        .from('orders')
         .update({ 
           entregador_id: entregador.id,
-          status: 'aceito' 
+          order_status: 'accepted' 
         })
         .eq('id', pedidoId)
-        .eq('status', 'novo');
+        .eq('order_status', 'pending');
 
       return { error };
     } catch (error) {
@@ -147,7 +165,7 @@ export class EntregadorService {
   // Atualizar status do pedido
   static async atualizarStatusPedido(
     pedidoId: string, 
-    novoStatus: Pedido['status'],
+    novoStatus: string,
     observacao?: string,
     fotoUrl?: string
   ): Promise<{ error: any }> {
@@ -164,32 +182,40 @@ export class EntregadorService {
 
       if (!entregador) throw new Error('Entregador não encontrado');
 
+      // Mapear status para o sistema de orders
+      const statusMap: { [key: string]: string } = {
+        'coletado': 'preparing',
+        'em_transito': 'out_for_delivery',
+        'entregue': 'delivered'
+      };
+
       // Atualizar pedido
-      const updateData: any = { status: novoStatus };
-      if (fotoUrl && novoStatus === 'entregue') {
-        updateData.foto_confirmacao = fotoUrl;
-      }
+      const updateData: any = { order_status: statusMap[novoStatus] || novoStatus };
 
       const { error: pedidoError } = await supabase
-        .from('pedidos')
+        .from('orders')
         .update(updateData)
         .eq('id', pedidoId)
         .eq('entregador_id', entregador.id);
 
       if (pedidoError) throw pedidoError;
 
-      // Registrar no rastreamento
-      const { error: rastreamentoError } = await supabase
-        .from('rastreamento_pedidos')
-        .insert({
-          pedido_id: pedidoId,
-          entregador_id: entregador.id,
-          status: novoStatus,
-          observacao,
-          foto_url: fotoUrl
-        });
+      // Registrar na tabela de delivery se for necessário
+      if (novoStatus === 'entregue' && fotoUrl) {
+        const { error: deliveryError } = await supabase
+          .from('deliveries')
+          .upsert({
+            order_id: parseInt(pedidoId),
+            delivery_status: 'delivered',
+            confirmation_photo_url: fotoUrl,
+            end_time: new Date().toISOString(),
+            driver_id: user.id
+          });
 
-      return { error: rastreamentoError };
+        return { error: deliveryError };
+      }
+
+      return { error: null };
     } catch (error) {
       return { error };
     }
@@ -302,27 +328,27 @@ export class EntregadorService {
 
       if (!entregador) throw new Error('Entregador não encontrado');
 
-      // Buscar ganhos do dia
+      // Buscar ganhos do dia (da tabela deliveries)
       const hoje = new Date().toISOString().split('T')[0];
       const { data: ganhosHoje } = await supabase
-        .from('pedidos')
-        .select('valor_entrega')
-        .eq('entregador_id', entregador.id)
-        .eq('status', 'entregue')
+        .from('deliveries')
+        .select('delivery_fee')
+        .eq('driver_id', user.id)
+        .eq('delivery_status', 'delivered')
         .gte('created_at', hoje);
 
       // Buscar ganhos do mês
       const inicioMes = new Date();
       inicioMes.setDate(1);
       const { data: ganhosMes } = await supabase
-        .from('pedidos')
-        .select('valor_entrega')
-        .eq('entregador_id', entregador.id)
-        .eq('status', 'entregue')
+        .from('deliveries')
+        .select('delivery_fee')
+        .eq('driver_id', user.id)
+        .eq('delivery_status', 'delivered')
         .gte('created_at', inicioMes.toISOString());
 
-      const ganhos_hoje = ganhosHoje?.reduce((sum, p) => sum + (p.valor_entrega || 0), 0) || 0;
-      const ganhos_mes = ganhosMes?.reduce((sum, p) => sum + (p.valor_entrega || 0), 0) || 0;
+      const ganhos_hoje = ganhosHoje?.reduce((sum, p) => sum + (p.delivery_fee || 0), 0) || 0;
+      const ganhos_mes = ganhosMes?.reduce((sum, p) => sum + (p.delivery_fee || 0), 0) || 0;
 
       return {
         data: {

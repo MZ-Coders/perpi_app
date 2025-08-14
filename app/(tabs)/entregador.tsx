@@ -1,102 +1,89 @@
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Pressable,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    View
+  Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
 import { EntregadorService } from '../../services/entregadorService';
-import type { Entregador, Pedido } from '../../types/entregador';
+import type { Entregador } from '../../types/entregador';
 
-export default function EntregadorScreen() {
+interface OrderItem {
+  id: number;
+  quantity: number;
+  price_at_purchase: number;
+  products: {
+    name: string;
+  };
+}
+
+interface Order {
+  id: number;
+  total_amount: number;
+  order_status: string;
+  created_at: string;
+  endereco_entrega?: string;
+  cidade_entrega?: string;
+  provincia_entrega?: string;
+  latitude_entrega?: number;
+  longitude_entrega?: number;
+  order_items: OrderItem[];
+}
+
+export default function EntregadorDashboard() {
   const [entregador, setEntregador] = useState<Entregador | null>(null);
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [pedidosDisponiveis, setPedidosDisponiveis] = useState<Pedido[]>([]);
+  const [pedidos, setPedidos] = useState<Order[]>([]);
+  const [pedidosDisponiveis, setPedidosDisponiveis] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [estatisticas, setEstatisticas] = useState({
-    total_entregas: 0,
-    avaliacao_media: 0,
-    ganhos_hoje: 0,
-    ganhos_mes: 0
+    pedidosHoje: 0,
+    ganhosDiarios: 0,
+    avaliacaoMedia: 0,
+    tempoMedioEntrega: '0 min'
   });
 
   useEffect(() => {
     carregarDados();
   }, []);
 
-  const carregarDados = async () => {
+    const carregarDados = async () => {
     try {
-      // Buscar dados do entregador
-      const { data: entregadorData } = await EntregadorService.buscarEntregadorAtual();
-      setEntregador(entregadorData);
-
-      if (!entregadorData) {
-        // Se não há entregador cadastrado, redirecionar para cadastro
-        Alert.alert(
-          'Cadastro Necessário',
-          'Você precisa se cadastrar como entregador primeiro.',
-          [
-            {
-              text: 'Cadastrar Agora',
-              onPress: () => router.push('/cadastro-entregador')
-            }
-          ]
-        );
-        return;
-      }
-
-      if (entregadorData.status_verificacao === 'pendente') {
-        Alert.alert(
-          'Aguardando Aprovação',
-          'Seu cadastro está sendo analisado. Aguarde a aprovação para começar a trabalhar.'
-        );
-        return;
-      }
-
-      if (entregadorData.status_verificacao === 'rejeitado') {
-        Alert.alert(
-          'Cadastro Rejeitado',
-          'Seu cadastro foi rejeitado. Entre em contato com o suporte.'
-        );
-        return;
-      }
-
-      // Carregar pedidos e estatísticas
-      await Promise.all([
-        carregarMeusPedidos(),
-        carregarPedidosDisponiveis(),
-        carregarEstatisticas()
+      const [entregadorData, meusPedidos, disponiveis, stats] = await Promise.all([
+        EntregadorService.buscarEntregadorLogado(),
+        EntregadorService.buscarMeusPedidos(),
+        EntregadorService.buscarPedidosDisponiveis(),
+        EntregadorService.calcularEstatisticas()
       ]);
 
+      setEntregador(entregadorData);
+      setPedidos(meusPedidos.data || []);
+      setPedidosDisponiveis(disponiveis.data || []);
+      
+      // Adaptar as estatísticas do serviço para o formato do estado
+      if (stats.data) {
+        setEstatisticas({
+          pedidosHoje: stats.data.total_entregas,
+          ganhosDiarios: stats.data.ganhos_hoje,
+          avaliacaoMedia: stats.data.avaliacao_media,
+          tempoMedioEntrega: '30 min' // valor fixo por enquanto
+        });
+      }
+      
+      setLoading(false);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-    } finally {
+      Alert.alert('Erro', 'Não foi possível carregar os dados');
       setLoading(false);
     }
   };
 
-  const carregarMeusPedidos = async () => {
-    const { data } = await EntregadorService.buscarMeusPedidos();
-    setPedidos(data);
-  };
-
-  const carregarPedidosDisponiveis = async () => {
-    const { data } = await EntregadorService.buscarPedidosDisponiveis();
-    setPedidosDisponiveis(data);
-  };
-
-  const carregarEstatisticas = async () => {
-    const { data } = await EntregadorService.calcularEstatisticas();
-    if (data) {
-      setEstatisticas(data);
-    }
-  };
+  
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -124,81 +111,90 @@ export default function EntregadorScreen() {
     }
   };
 
-  const aceitarPedido = async (pedidoId: string) => {
-    const { error } = await EntregadorService.aceitarPedido(pedidoId);
-    
-    if (error) {
-      Alert.alert('Erro', 'Não foi possível aceitar o pedido.');
-      return;
+  const aceitarPedido = async (pedidoId: number) => {
+    try {
+      await EntregadorService.aceitarPedido(pedidoId.toString());
+      await carregarDados();
+      Alert.alert('Sucesso', 'Pedido aceito com sucesso!');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível aceitar o pedido');
     }
-
-    Alert.alert('Pedido Aceito!', 'O pedido foi atribuído a você.');
-    await carregarDados();
   };
 
-  const atualizarStatusPedido = (pedidoId: string, novoStatus: Pedido['status']) => {
+  const atualizarStatusPedido = (pedidoId: number, novoStatus: string) => {
     Alert.alert(
-      'Confirmar Status',
-      `Deseja marcar o pedido como "${getStatusLabel(novoStatus)}"?`,
+      'Confirmar Atualização',
+      `Deseja atualizar o status do pedido para "${getStatusLabel(novoStatus)}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Confirmar',
           onPress: async () => {
-            const { error } = await EntregadorService.atualizarStatusPedido(pedidoId, novoStatus);
-            
-            if (error) {
-              Alert.alert('Erro', 'Não foi possível atualizar o status.');
-              return;
+            try {
+              await EntregadorService.atualizarStatusPedido(pedidoId.toString(), novoStatus);
+              await carregarDados();
+            } catch {
+              Alert.alert('Erro', 'Não foi possível atualizar o status');
             }
-
-            await carregarDados();
-          },
-        },
+          }
+        }
       ]
     );
   };
 
-  const getStatusLabel = (status: Pedido['status']) => {
-    switch (status) {
-      case 'novo': return 'Novo';
-      case 'atribuido': return 'Atribuído';
-      case 'aceito': return 'Aceito';
-      case 'coletado': return 'Coletado';
-      case 'em_transito': return 'Em Trânsito';
-      case 'entregue': return 'Entregue';
-      case 'cancelado': return 'Cancelado';
-      default: return status;
-    }
+
+
+  const getStatusLabel = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'Pendente',
+      'accepted': 'Aceito',
+      'preparing': 'Preparando',
+      'ready': 'Pronto',
+      'picked_up': 'Coletado',
+      'in_transit': 'Em Trânsito',
+      'delivered': 'Entregue',
+      'cancelled': 'Cancelado'
+    };
+    return statusMap[status] || status;
   };
 
-  const getStatusColor = (status: Pedido['status']) => {
-    switch (status) {
-      case 'novo': return '#FFA500';
-      case 'atribuido': return '#2196F3';
-      case 'aceito': return '#4CAF50';
-      case 'coletado': return '#FF9800';
-      case 'em_transito': return '#FF5722';
-      case 'entregue': return '#4CAF50';
-      case 'cancelado': return '#F44336';
-      default: return '#666';
-    }
+  const getStatusColor = (status: string) => {
+    const colorMap: { [key: string]: string } = {
+      'pending': '#FF9500',
+      'accepted': '#007AFF',
+      'preparing': '#FF9500',
+      'ready': '#34C759',
+      'picked_up': '#007AFF',
+      'in_transit': '#5856D6',
+      'delivered': '#34C759',
+      'cancelled': '#FF3B30'
+    };
+    return colorMap[status] || '#8E8E93';
   };
 
-  const getNextStatus = (currentStatus: Pedido['status']): Pedido['status'] | null => {
-    switch (currentStatus) {
-      case 'aceito': return 'coletado';
-      case 'coletado': return 'em_transito';
-      case 'em_transito': return 'entregue';
-      default: return null;
-    }
+  const getNextStatus = (currentStatus: string): string | null => {
+    const nextStatusMap: { [key: string]: string } = {
+      'accepted': 'picked_up',
+      'picked_up': 'in_transit',
+      'in_transit': 'delivered'
+    };
+    return nextStatusMap[currentStatus] || null;
   };
 
-  const openMap = (pedido: Pedido) => {
-    router.push({
-      pathname: '/order-tracking',
-      params: { orderId: pedido.id }
-    });
+  const openMap = (pedido: Order) => {
+    if (pedido.latitude_entrega && pedido.longitude_entrega) {
+      router.push({
+        pathname: '/(tabs)/navegacao-entrega',
+        params: {
+          pedidoId: pedido.id.toString(),
+          latitude: pedido.latitude_entrega.toString(),
+          longitude: pedido.longitude_entrega.toString(),
+          endereco: pedido.endereco_entrega || 'Endereço não informado'
+        }
+      });
+    } else {
+      Alert.alert('Erro', 'Coordenadas de entrega não disponíveis');
+    }
   };
 
   if (loading) {
@@ -232,37 +228,33 @@ export default function EntregadorScreen() {
     );
   }
 
-  const renderPedido = ({ item: pedido }: { item: Pedido }) => (
+  const renderPedido = ({ item: pedido }: { item: Order }) => (
     <View style={styles.orderCard}>
       <View style={styles.orderHeader}>
-        <Text style={styles.orderId}>Pedido #{pedido.id.slice(-6)}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(pedido.status) }]}>
-          <Text style={styles.statusText}>{getStatusLabel(pedido.status)}</Text>
+        <Text style={styles.orderId}>Pedido #{pedido.id.toString().slice(-6)}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(pedido.order_status) }]}>
+          <Text style={styles.statusText}>{getStatusLabel(pedido.order_status)}</Text>
         </View>
       </View>
 
       <View style={styles.addressInfo}>
         <Text style={styles.addressLabel}>� Entrega:</Text>
         <Text style={styles.addressText}>{pedido.endereco_entrega}</Text>
-        {pedido.endereco_coleta && (
-          <>
-            <Text style={styles.addressLabel}>🏪 Coleta:</Text>
-            <Text style={styles.addressText}>{pedido.endereco_coleta}</Text>
-          </>
+        {pedido.endereco_entrega && (
+          <Text style={styles.addressLabel}>🚚 Entrega:</Text>
         )}
       </View>
 
-      {pedido.itens && pedido.itens.length > 0 && (
+      {pedido.order_items && pedido.order_items.length > 0 && (
         <View style={styles.orderItems}>
           <Text style={styles.itemsTitle}>Itens:</Text>
-          {pedido.itens.map((item, index) => (
+          {pedido.order_items.map((item: OrderItem, index: number) => (
             <Text key={index} style={styles.itemText}>
-              • {item.quantidade}x {item.produto_nome} - {item.preco_unitario} MZN
+              • {item.quantity}x {item.products.name} - {item.price_at_purchase} MZN
             </Text>
           ))}
           <Text style={styles.totalAmount}>
-            Total: {pedido.valor_total} MZN
-            {pedido.valor_entrega && ` (Entrega: ${pedido.valor_entrega} MZN)`}
+            Total: {pedido.total_amount} MZN
           </Text>
         </View>
       )}
@@ -275,26 +267,21 @@ export default function EntregadorScreen() {
           <Text style={styles.mapButtonText}>🗺️ Ver no Mapa</Text>
         </Pressable>
 
-        {getNextStatus(pedido.status) && (
+        {getNextStatus(pedido.order_status) && (
           <Pressable
-            style={[styles.statusButton, { backgroundColor: getStatusColor(getNextStatus(pedido.status)!) }]}
-            onPress={() => atualizarStatusPedido(pedido.id, getNextStatus(pedido.status)!)}
+            style={[styles.statusButton, { backgroundColor: getStatusColor(getNextStatus(pedido.order_status)!) }]}
+            onPress={() => atualizarStatusPedido(pedido.id, getNextStatus(pedido.order_status)!)}
           >
             <Text style={styles.statusButtonText}>
-              Marcar como {getStatusLabel(getNextStatus(pedido.status)!)}
+              Marcar como {getStatusLabel(getNextStatus(pedido.order_status)!)}
             </Text>
           </Pressable>
         )}
       </View>
 
-      {pedido.distancia_km && (
-        <View style={styles.distanceInfo}>
-          <Text style={styles.distanceText}>📏 Distância: {pedido.distancia_km.toFixed(1)} km</Text>
-          {pedido.tempo_estimado && (
-            <Text style={styles.timeText}>⏱️ Tempo estimado: {pedido.tempo_estimado} min</Text>
-          )}
-        </View>
-      )}
+      <View style={styles.distanceInfo}>
+        <Text style={styles.timeText}>⏱️ Criado: {new Date(pedido.created_at).toLocaleString()}</Text>
+      </View>
     </View>
   );
 
@@ -320,20 +307,20 @@ export default function EntregadorScreen() {
       {/* Estatísticas */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{estatisticas.total_entregas}</Text>
+          <Text style={styles.statNumber}>{estatisticas.pedidosHoje}</Text>
           <Text style={styles.statLabel}>Entregas</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{estatisticas.avaliacao_media.toFixed(1)}⭐</Text>
+          <Text style={styles.statNumber}>{estatisticas.avaliacaoMedia.toFixed(1)}⭐</Text>
           <Text style={styles.statLabel}>Avaliação</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{estatisticas.ganhos_hoje} MZN</Text>
+          <Text style={styles.statNumber}>{estatisticas.ganhosDiarios} MZN</Text>
           <Text style={styles.statLabel}>Hoje</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{estatisticas.ganhos_mes} MZN</Text>
-          <Text style={styles.statLabel}>Este Mês</Text>
+          <Text style={styles.statNumber}>{estatisticas.tempoMedioEntrega}</Text>
+          <Text style={styles.statLabel}>Tempo Médio</Text>
         </View>
       </View>
 
@@ -354,7 +341,7 @@ export default function EntregadorScreen() {
           <FlatList
             data={pedidos}
             renderItem={renderPedido}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id.toString()}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
@@ -364,8 +351,8 @@ export default function EntregadorScreen() {
         )}
       </View>
 
-      {/* Pedidos disponíveis */}
-      {entregador.disponivel && pedidosDisponiveis.length > 0 && (
+      {/* Pedidos disponíveis -> Futuramente para aceitar pedidos sozinho */} 
+      {/* {entregador.disponivel && pedidosDisponiveis.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🆕 Pedidos Disponíveis</Text>
           <FlatList
@@ -373,12 +360,12 @@ export default function EntregadorScreen() {
             renderItem={({ item: pedido }) => (
               <View style={[styles.orderCard, styles.availableOrder]}>
                 <View style={styles.orderHeader}>
-                  <Text style={styles.orderId}>Pedido #{pedido.id.slice(-6)}</Text>
+                  <Text style={styles.orderId}>Pedido #{pedido.id.toString().slice(-6)}</Text>
                   <Text style={styles.availableLabel}>Disponível</Text>
                 </View>
                 
                 <Text style={styles.addressText}>📍 {pedido.endereco_entrega}</Text>
-                <Text style={styles.totalAmount}>Total: {pedido.valor_total} MZN</Text>
+                <Text style={styles.totalAmount}>Total: {pedido.total_amount} MZN</Text>
                 
                 <Pressable
                   style={styles.acceptButton}
@@ -388,13 +375,13 @@ export default function EntregadorScreen() {
                 </Pressable>
               </View>
             )}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id.toString()}
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.horizontalList}
           />
         </View>
-      )}
+      )} */}
     </View>
   );
 }
