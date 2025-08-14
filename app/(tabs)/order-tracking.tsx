@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Platform } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 
 export default function OrderTrackingScreen() {
@@ -20,18 +20,18 @@ export default function OrderTrackingScreen() {
           (err) => {
             console.error('Erro de geolocalização:', err);
             setLocError('Não foi possível obter sua localização.');
-            // Localização padrão para Luanda
-            setLocation({ lat: -8.8355, lng: 13.2319 });
+            // Localização padrão para Beira, Sofala
+            setLocation({ lat: -19.8333, lng: 34.8500 });
           }
         );
       } else {
         setLocError('Geolocalização não suportada.');
-        // Localização padrão para Luanda
-        setLocation({ lat: -8.8355, lng: 13.2319 });
+  // Localização padrão para Beira, Sofala
+  setLocation({ lat: -19.8333, lng: 34.8500 });
       }
     } else {
-      // Mobile: usar uma localização padrão para teste
-      setLocation({ lat: -8.8355, lng: 13.2319 });
+  // Mobile: usar uma localização padrão para teste (Beira, Sofala)
+  setLocation({ lat: -19.8333, lng: 34.8500 });
     }
   }, []);
 

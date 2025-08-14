@@ -1,9 +1,9 @@
+import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Alert } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
-import * as Location from 'expo-location';
-import MapView, { Marker } from 'react-native-maps';
 
 export default function OrderTrackingScreen() {
   const params = useLocalSearchParams();
@@ -15,7 +15,7 @@ export default function OrderTrackingScreen() {
   useEffect(() => {
     getUserLocation();
     // Localização padrão para entrega (pode vir de uma API)
-    setLocation({ lat: -8.8355, lng: 13.2319 }); // Luanda
+    setLocation({ lat: -19.8333, lng: 34.8500 }); // Beira, Sofala
   }, []);
 
   const getUserLocation = async () => {
@@ -45,7 +45,7 @@ export default function OrderTrackingScreen() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>⚠️ {locationError}</Text>
           <Text style={styles.infoText}>
-            Usando localização padrão de Luanda
+            Usando localização padrão da Beira, Sofala
           </Text>
         </View>
         {location && (
@@ -71,7 +71,13 @@ export default function OrderTrackingScreen() {
   }
 
   // Exibir o mapa com localização do usuário
-  const region = userLocation ? {
+  const region = userLocation && location ? {
+    // Calcular região que inclui ambos os pontos
+    latitude: (userLocation.coords.latitude + location.lat) / 2,
+    longitude: (userLocation.coords.longitude + location.lng) / 2,
+    latitudeDelta: Math.abs(userLocation.coords.latitude - location.lat) * 1.5 + 0.01,
+    longitudeDelta: Math.abs(userLocation.coords.longitude - location.lng) * 1.5 + 0.01,
+  } : userLocation ? {
     latitude: userLocation.coords.latitude,
     longitude: userLocation.coords.longitude,
     latitudeDelta: 0.01,
@@ -82,8 +88,8 @@ export default function OrderTrackingScreen() {
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   } : {
-    latitude: -8.8355,
-    longitude: 13.2319,
+    latitude: -19.8333,
+    longitude: 34.8500,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   };
@@ -116,6 +122,25 @@ export default function OrderTrackingScreen() {
             title="Local de Entrega"
             description="Seu pedido será entregue aqui"
             pinColor="red"
+          />
+        )}
+
+        {/* Rota entre usuário e local de entrega */}
+        {userLocation && location && (
+          <Polyline
+            coordinates={[
+              {
+                latitude: userLocation.coords.latitude,
+                longitude: userLocation.coords.longitude,
+              },
+              {
+                latitude: location.lat,
+                longitude: location.lng,
+              },
+            ]}
+            strokeColor="#FF6B6B" // Cor vermelha para a rota
+            strokeWidth={4}
+            lineDashPattern={[5, 5]} // Linha tracejada
           />
         )}
       </MapView>
