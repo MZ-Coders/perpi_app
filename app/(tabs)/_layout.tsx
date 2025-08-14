@@ -80,6 +80,7 @@ export default function TabLayout() {
           { key: 'index', label: 'Productos', icon: 'home' },
           ...(user ? [
             { key: 'orders', label: 'Compras', icon: 'clipboard' },
+            { key: 'entregador', label: 'Entregador', icon: 'truck' },
             // { key: 'favorites', label: 'Favoritos', icon: 'heart' },
             { key: 'profile', label: 'Perfil', icon: 'user' },
           ] : []),
@@ -142,6 +143,15 @@ export default function TabLayout() {
       {/* Adiciona explicitamente as rotas de Favoritos e Perfil para garantir navegação */}
       {user ? (
         <>
+          <Drawer.Screen
+            name="entregador"
+            options={{
+              drawerLabel: 'Entregador',
+              title: 'Painel do Entregador',
+              headerTitle: 'Painel do Entregador',
+              headerShown: false,
+            }}
+          />
           <Drawer.Screen
             name="favorites"
             options={{
