@@ -23,6 +23,9 @@ export default function ProductCatalogScreen() {
   // Detecta usuário logado apenas pelo hook useAuthUser
   const user = authUser ? authUser : null;
   
+  // Não mostrar funcionalidades de carrinho para entregadores
+  const showCartFeatures = user?.user_role !== 'driver';
+  
   // Redirecionar entregadores para a tela de entregador
   React.useEffect(() => {
     if (user && user.user_role === 'driver') {
@@ -366,12 +369,14 @@ export default function ProductCatalogScreen() {
           <View style={styles.gridCardContent}>
             <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.gridPrice}>MZN {item.price}</Text>
-            <TouchableOpacity
-              style={[styles.gridCartBtn, inCart && styles.cartBtnInCart]}
-              onPress={() => handleToggleCart(item)}
-            >
-              <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
-            </TouchableOpacity>
+            {showCartFeatures && (
+              <TouchableOpacity
+                style={[styles.gridCartBtn, inCart && styles.cartBtnInCart]}
+                onPress={() => handleToggleCart(item)}
+              >
+                <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
       );
@@ -423,16 +428,18 @@ export default function ProductCatalogScreen() {
             <Text style={[styles.gridPrice, { fontSize: 18, marginBottom: 0 }]}>MZN {item.price}</Text>
           </View>
           {/* Carrinho embaixo à direita */}
-          <TouchableOpacity
-            style={[
-              styles.gridCartBtn,
-              inCart && styles.cartBtnInCart,
-              { width: 40, height: 40, borderRadius: 20, position: 'absolute', bottom: 0, right: 0 }
-            ]}
-            onPress={() => handleToggleCart(item)}
-          >
-            <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
-          </TouchableOpacity>
+          {showCartFeatures && (
+            <TouchableOpacity
+              style={[
+                styles.gridCartBtn,
+                inCart && styles.cartBtnInCart,
+                { width: 40, height: 40, borderRadius: 20, position: 'absolute', bottom: 0, right: 0 }
+              ]}
+              onPress={() => handleToggleCart(item)}
+            >
+              <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -458,17 +465,19 @@ export default function ProductCatalogScreen() {
             </TouchableOpacity>
             <Text style={styles.title}>Perpi</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity
-                style={styles.cartIconBtn}
-                onPress={() => router.push('/cart')}
-              >
-                <Icon name="shopping-cart" size={24} color="#fff" />
-                {cart.length > 0 && (
-                  <View style={styles.cartBadge}>
-                    <Text style={styles.cartBadgeText}>{cart.length}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              {showCartFeatures && (
+                <TouchableOpacity
+                  style={styles.cartIconBtn}
+                  onPress={() => router.push('/cart')}
+                >
+                  <Icon name="shopping-cart" size={24} color="#fff" />
+                  {cart.length > 0 && (
+                    <View style={styles.cartBadge}>
+                      <Text style={styles.cartBadgeText}>{cart.length}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.cartIconBtn, { marginLeft: 8, padding: 0, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)' }]}
                 onPress={() => {

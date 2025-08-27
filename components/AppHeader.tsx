@@ -22,6 +22,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart
   const [cartCount, setCartCount] = React.useState(0);
   const [profile, setProfile] = React.useState<any>(null);
 
+  // Não mostrar carrinho para entregadores
+  const shouldShowCart = showCart && user?.user_role !== 'driver';
+
   // Carrega quantidade do carrinho
   React.useEffect(() => {
     function syncCart() {
@@ -90,7 +93,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart
         </TouchableOpacity>
         <Text style={styles.title}>{title}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {showCart && (
+          {shouldShowCart && (
             <TouchableOpacity
               style={styles.cartIconBtn}
               onPress={() => router.push('/cart')}

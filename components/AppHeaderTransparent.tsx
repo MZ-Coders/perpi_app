@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { DeviceEventEmitter, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import { useAuthUser } from '../hooks/useAuthUser';
 import { listenToCartUpdates } from '../utils/cartEvents';
 
 interface AppHeaderTransparentProps {
@@ -13,7 +14,11 @@ interface AppHeaderTransparentProps {
 
 const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack, showCart = true, mode = 'back' }) => {
   const router = useRouter();
+  const user = useAuthUser();
   const [cartCount, setCartCount] = React.useState(0);
+
+  // Não mostrar carrinho para entregadores
+  const shouldShowCart = showCart && user?.user_role !== 'driver';
 
   // Atualiza quantidade do carrinho ao montar e ao receber evento
   React.useEffect(() => {
@@ -67,7 +72,7 @@ const AppHeaderTransparent: React.FC<AppHeaderTransparentProps> = ({ onBack, sho
         )}
         <View style={{ flex: 1 }} />
         {/* Botão de carrinho à direita */}
-        {showCart && (
+        {shouldShowCart && (
           <TouchableOpacity
             style={styles.cartButton}
             onPress={() => router.push('/cart')}

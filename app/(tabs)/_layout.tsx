@@ -60,11 +60,10 @@ export default function TabLayout() {
             { key: 'profile', label: 'Perfil', icon: 'user' },
           ];
         } else {
-          // Cliente regular - menu completo
+          // Cliente regular - menu sem Entregador
           screens = [
             { key: 'index', label: 'Productos', icon: 'home' },
             { key: 'orders', label: 'Compras', icon: 'clipboard' },
-            { key: 'entregador', label: 'Entregador', icon: 'truck' },
             { key: 'profile', label: 'Perfil', icon: 'user' },
           ];
         }
@@ -148,17 +147,8 @@ export default function TabLayout() {
               />
             </>
           ) : (
-            // Menu para clientes regulares - menu completo
+            // Menu para clientes regulares - sem Entregador
             <>
-              <Drawer.Screen
-                name="entregador"
-                options={{
-                  drawerLabel: 'Entregador',
-                  title: 'Painel do Entregador',
-                  headerTitle: 'Painel do Entregador',
-                  headerShown: false,
-                }}
-              />
               <Drawer.Screen
                 name="favorites"
                 options={{
