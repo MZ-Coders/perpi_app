@@ -6,7 +6,6 @@ import {
   Dimensions,
   FlatList,
   Image,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -337,7 +336,7 @@ const getStatusIcon = (status: string) => {
       <AppHeader title="Meus Pedidos" />
       
       {/* Modal de Sucesso Animado */}
-      <Modal
+      {/* <Modal
         transparent={true}
         visible={showSuccess}
         animationType="none"
@@ -371,7 +370,7 @@ const getStatusIcon = (status: string) => {
             </View>
           </Animated.View>
         </Animated.View>
-      </Modal>
+      </Modal> */}
 
       {loading ? (
         <OrdersSkeleton />
