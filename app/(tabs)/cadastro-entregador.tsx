@@ -14,14 +14,16 @@ import {
     View,
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
+import { useAuthUser } from '../../hooks/useAuthUser';
 import { EntregadorService } from '../../services/entregadorService';
 import type { FormularioCadastroEntregador } from '../../types/entregador';
 
 export default function CadastroEntregadorScreen() {
+  const user = useAuthUser();
   const [formulario, setFormulario] = useState<FormularioCadastroEntregador>({
     nome_completo: '',
     telefone: '',
-    email: '',
+    email: user?.email || '',
     data_nascimento: '',
     numero_bi: '',
     numero_passaporte: '',
@@ -39,12 +41,44 @@ export default function CadastroEntregadorScreen() {
   }>({});
 
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+  // Calcular progresso do formulário
+  const calcularProgresso = (): number => {
+    const camposObrigatorios = [
+      'nome_completo', 'telefone', 'email', 'endereco', 'aceite_termos'
+    ];
+    const camposDocumento = formulario.numero_bi || formulario.numero_passaporte;
+    const fotoDocumento = fotosDocumentos.foto_bi || fotosDocumentos.foto_passaporte;
+    
+    let preenchidos = 0;
+    camposObrigatorios.forEach(campo => {
+      if (campo === 'aceite_termos') {
+        if (formulario[campo]) preenchidos++;
+      } else if (formulario[campo as keyof FormularioCadastroEntregador]?.toString().trim()) {
+        preenchidos++;
+      }
+    });
+    
+    if (camposDocumento) preenchidos++;
+    if (fotoDocumento) preenchidos++;
+    
+    return Math.round((preenchidos / (camposObrigatorios.length + 2)) * 100);
+  };
 
   const handleInputChange = (campo: keyof FormularioCadastroEntregador, valor: any) => {
     setFormulario(prev => ({
       ...prev,
       [campo]: valor
     }));
+
+    // Limpar erro do campo quando o usuário começar a digitar
+    if (errors[campo]) {
+      setErrors(prev => ({
+        ...prev,
+        [campo]: ''
+      }));
+    }
   };
 
   const selecionarFoto = async (tipoFoto: 'foto_bi' | 'foto_passaporte' | 'foto_perfil') => {
@@ -75,32 +109,38 @@ export default function CadastroEntregadorScreen() {
   };
 
   const validarFormulario = (): boolean => {
+    const newErrors: {[key: string]: string} = {};
+
     if (!formulario.nome_completo.trim()) {
-      Alert.alert('Erro', 'Nome completo é obrigatório.');
-      return false;
+      newErrors.nome_completo = 'Nome completo é obrigatório';
     }
     if (!formulario.telefone.trim()) {
-      Alert.alert('Erro', 'Telefone é obrigatório.');
-      return false;
+      newErrors.telefone = 'Telefone é obrigatório';
     }
     if (!formulario.email.trim()) {
-      Alert.alert('Erro', 'Email é obrigatório.');
-      return false;
+      newErrors.email = 'Email é obrigatório';
+    } else if (!/\S+@\S+\.\S+/.test(formulario.email)) {
+      newErrors.email = 'Email inválido';
     }
     if (!formulario.endereco.trim()) {
-      Alert.alert('Erro', 'Endereço é obrigatório.');
-      return false;
+      newErrors.endereco = 'Endereço é obrigatório';
     }
     if (!formulario.numero_bi.trim() && !formulario.numero_passaporte.trim()) {
-      Alert.alert('Erro', 'Número do BI ou Passaporte é obrigatório.');
-      return false;
+      newErrors.numero_bi = 'Número do BI ou Passaporte é obrigatório';
+      newErrors.numero_passaporte = 'Número do BI ou Passaporte é obrigatório';
     }
     if (!formulario.aceite_termos) {
-      Alert.alert('Erro', 'É necessário aceitar os termos e condições.');
-      return false;
+      newErrors.aceite_termos = 'É necessário aceitar os termos e condições';
     }
     if (!fotosDocumentos.foto_bi && !fotosDocumentos.foto_passaporte) {
-      Alert.alert('Erro', 'É necessário enviar foto do BI ou Passaporte.');
+      newErrors.foto_documento = 'É necessário enviar foto do BI ou Passaporte';
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.values(newErrors)[0];
+      Alert.alert('Erro de Validação', firstError);
       return false;
     }
 
@@ -112,6 +152,13 @@ export default function CadastroEntregadorScreen() {
 
     setLoading(true);
     try {
+      // Verificar se o usuário está logado
+      if (!user) {
+        Alert.alert('Erro', 'Você precisa estar logado para se cadastrar como entregador.');
+        setLoading(false);
+        return;
+      }
+
       // Aqui você faria o upload das fotos para o Supabase Storage
       // Por simplicidade, vou apenas simular
       const dadosCompletos = {
@@ -119,11 +166,15 @@ export default function CadastroEntregadorScreen() {
         ...fotosDocumentos
       };
 
-      const { data, error } = await EntregadorService.cadastrarEntregador(dadosCompletos);
+      const { error } = await EntregadorService.cadastrarEntregador(dadosCompletos);
 
       if (error) {
         console.error('Erro ao cadastrar:', error);
-        Alert.alert('Erro', 'Não foi possível completar o cadastro. Tente novamente.');
+        if (error.code === '23505') {
+          Alert.alert('Erro', 'Você já possui um cadastro de entregador.');
+        } else {
+          Alert.alert('Erro', 'Não foi possível completar o cadastro. Tente novamente.');
+        }
         return;
       }
 
@@ -177,6 +228,22 @@ export default function CadastroEntregadorScreen() {
     >
       <AppHeader title="Cadastro de Entregador" />
       
+      {/* Indicador de Progresso */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressInfo}>
+          <Text style={styles.progressText}>Progresso: {calcularProgresso()}%</Text>
+          <Text style={styles.progressSubtext}>Complete todos os campos obrigatórios</Text>
+        </View>
+        <View style={styles.progressBar}>
+          <View 
+            style={[
+              styles.progressFill, 
+              { width: `${calcularProgresso()}%` }
+            ]} 
+          />
+        </View>
+      </View>
+      
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -188,35 +255,53 @@ export default function CadastroEntregadorScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Nome Completo *</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                errors.nome_completo && styles.inputError
+              ]}
               value={formulario.nome_completo}
               onChangeText={(text) => handleInputChange('nome_completo', text)}
               placeholder="Seu nome completo"
               autoCapitalize="words"
             />
+            {errors.nome_completo ? (
+              <Text style={styles.errorText}>{errors.nome_completo}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Telefone *</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                errors.telefone && styles.inputError
+              ]}
               value={formulario.telefone}
               onChangeText={(text) => handleInputChange('telefone', text)}
               placeholder="+258 84 123 4567"
               keyboardType="phone-pad"
             />
+            {errors.telefone ? (
+              <Text style={styles.errorText}>{errors.telefone}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email *</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                errors.email && styles.inputError
+              ]}
               value={formulario.email}
               onChangeText={(text) => handleInputChange('email', text)}
               placeholder="seu@email.com"
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {errors.email ? (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputGroup}>
@@ -375,6 +460,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
+  progressContainer: {
+    backgroundColor: 'white',
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  progressInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  progressText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  progressSubtext: {
+    fontSize: 12,
+    color: '#666',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#008A44',
+    borderRadius: 3,
+  },
   scrollView: {
     flex: 1,
   },
@@ -418,6 +541,16 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: '#FAFAFA',
+  },
+  inputError: {
+    borderColor: '#FF3B30',
+    backgroundColor: '#FFF5F5',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   textArea: {
     height: 80,

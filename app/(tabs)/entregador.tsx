@@ -10,8 +10,8 @@ import {
   View
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
+import { useEntregadorStatus } from '../../hooks/useEntregadorStatus';
 import { EntregadorService } from '../../services/entregadorService';
-import type { Entregador } from '../../types/entregador';
 
 interface OrderItem {
   id: number;
@@ -36,9 +36,15 @@ interface Order {
 }
 
 export default function EntregadorDashboard() {
-  const [entregador, setEntregador] = useState<Entregador | null>(null);
+  const { 
+    entregador, 
+    hasCadastro, 
+    isPendente, 
+    isRejeitado,
+    refresh: refreshEntregador 
+  } = useEntregadorStatus();
+  
   const [pedidos, setPedidos] = useState<Order[]>([]);
-  const [pedidosDisponiveis, setPedidosDisponiveis] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [estatisticas, setEstatisticas] = useState({
@@ -54,16 +60,12 @@ export default function EntregadorDashboard() {
 
     const carregarDados = async () => {
     try {
-      const [entregadorData, meusPedidos, disponiveis, stats] = await Promise.all([
-        EntregadorService.buscarEntregadorLogado(),
+      const [meusPedidos, stats] = await Promise.all([
         EntregadorService.buscarMeusPedidos(),
-        EntregadorService.buscarPedidosDisponiveis(),
         EntregadorService.calcularEstatisticas()
       ]);
 
-      setEntregador(entregadorData);
       setPedidos(meusPedidos.data || []);
-      setPedidosDisponiveis(disponiveis.data || []);
       
       // Adaptar as estatísticas do serviço para o formato do estado
       if (stats.data) {
@@ -83,11 +85,9 @@ export default function EntregadorDashboard() {
     }
   };
 
-  
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await carregarDados();
+    await Promise.all([carregarDados(), refreshEntregador()]);
     setRefreshing(false);
   };
 
@@ -102,22 +102,13 @@ export default function EntregadorDashboard() {
       return;
     }
 
-    setEntregador(prev => prev ? { ...prev, disponivel: novaDisponibilidade } : null);
+    // Refresh dos dados do entregador
+    await refreshEntregador();
     
     if (novaDisponibilidade) {
       Alert.alert('Online', 'Você está disponível para receber pedidos!');
     } else {
       Alert.alert('Offline', 'Você não receberá novos pedidos.');
-    }
-  };
-
-  const aceitarPedido = async (pedidoId: number) => {
-    try {
-      await EntregadorService.aceitarPedido(pedidoId.toString());
-      await carregarDados();
-      Alert.alert('Sucesso', 'Pedido aceito com sucesso!');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível aceitar o pedido');
     }
   };
 
@@ -208,7 +199,8 @@ export default function EntregadorDashboard() {
     );
   }
 
-  if (!entregador) {
+  // Se o usuário não tem cadastro de entregador
+  if (!hasCadastro) {
     return (
       <View style={styles.container}>
         <AppHeader title="Painel do Entregador" />
@@ -227,6 +219,55 @@ export default function EntregadorDashboard() {
       </View>
     );
   }
+
+  // Se o cadastro está pendente
+  if (isPendente) {
+    return (
+      <View style={styles.container}>
+        <AppHeader title="Painel do Entregador" />
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>⏳ Cadastro em Análise</Text>
+          <Text style={styles.emptyText}>
+            Seu cadastro foi enviado e está sendo analisado pela nossa equipe. 
+            Você receberá uma notificação quando for aprovado.
+          </Text>
+          <Text style={styles.statusInfo}>
+            Status: Aguardando aprovação
+          </Text>
+          <Pressable
+            style={styles.refreshButton}
+            onPress={refreshEntregador}
+          >
+            <Text style={styles.refreshButtonText}>🔄 Atualizar Status</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // Se o cadastro foi rejeitado
+  if (isRejeitado) {
+    return (
+      <View style={styles.container}>
+        <AppHeader title="Painel do Entregador" />
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>❌ Cadastro Rejeitado</Text>
+          <Text style={styles.emptyText}>
+            Infelizmente seu cadastro não foi aprovado. Entre em contato conosco 
+            para mais informações ou tente se cadastrar novamente.
+          </Text>
+          <Pressable
+            style={styles.cadastroButton}
+            onPress={() => router.push('/cadastro-entregador')}
+          >
+            <Text style={styles.cadastroButtonText}>Tentar Novamente</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // Se chegou aqui, o entregador está aprovado
 
   const renderPedido = ({ item: pedido }: { item: Order }) => (
     <View style={styles.orderCard}>
@@ -292,13 +333,13 @@ export default function EntregadorDashboard() {
       {/* Status do entregador */}
       <View style={styles.statusContainer}>
         <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>Status: {entregador.disponivel ? '🟢 Online' : '🔴 Offline'}</Text>
+          <Text style={styles.statusTitle}>Status: {entregador?.disponivel ? '🟢 Online' : '🔴 Offline'}</Text>
           <Pressable
-            style={[styles.toggleButton, entregador.disponivel ? styles.toggleActive : styles.toggleInactive]}
+            style={[styles.toggleButton, entregador?.disponivel ? styles.toggleActive : styles.toggleInactive]}
             onPress={alternarDisponibilidade}
           >
             <Text style={styles.toggleText}>
-              {entregador.disponivel ? 'Ficar Offline' : 'Ficar Online'}
+              {entregador?.disponivel ? 'Ficar Offline' : 'Ficar Online'}
             </Text>
           </Pressable>
         </View>
@@ -331,7 +372,7 @@ export default function EntregadorDashboard() {
         {pedidos.length === 0 ? (
           <View style={styles.emptyList}>
             <Text style={styles.emptyListText}>
-              {entregador.disponivel 
+              {entregador?.disponivel 
                 ? 'Aguardando novos pedidos...' 
                 : 'Fique online para receber pedidos'
               }
@@ -427,6 +468,24 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cadastroButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  statusInfo: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  refreshButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  refreshButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',

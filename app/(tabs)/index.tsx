@@ -1,5 +1,4 @@
 // Favoritos
-type Favorite = { id: number; product_id: number };
 import { Feather as Icon, MaterialCommunityIcons as MCIcon } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
@@ -9,18 +8,31 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ProductsSkeleton from '../../components/ProductsSkeleton';
 import { ProductListRefresh, usePullToRefresh } from '../../components/PullToRefresh';
+import SharedElement from '../../components/SharedElement';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import { emitCartUpdated, listenToCartUpdates } from '../../utils/cartEvents';
 import CategoryFilter from '../components/CategoryFilter';
+
+type Favorite = { id: number; product_id: number };
 const FAVORITES_ID = '__favoritos__';
 
-
-import SharedElement from '../../components/SharedElement';
 // import AppHeader from '../../components/AppHeader';
 export default function ProductCatalogScreen() {
   const authUser = useAuthUser();
+  const router = useRouter();
   // Detecta usuário logado apenas pelo hook useAuthUser
   const user = authUser ? authUser : null;
+  
+  // Redirecionar entregadores para a tela de entregador
+  React.useEffect(() => {
+    if (user && user.user_role === 'driver') {
+      // Usar setTimeout para evitar problemas de navegação durante renderização
+      setTimeout(() => {
+        router.replace('/entregador');
+      }, 100);
+    }
+  }, [user, router]);
+  
   // Debug: mostrar o objeto user no console
   React.useEffect(() => {
     // console.log('user:', user);
@@ -68,7 +80,6 @@ export default function ProductCatalogScreen() {
   //     console.log('[DEBUG] useFocusEffect - useAuthUser:', authUser);
   //   }, [])
   // );
-  const router = useRouter();
   const navigation = useNavigation();
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
