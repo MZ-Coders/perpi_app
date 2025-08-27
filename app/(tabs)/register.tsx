@@ -10,6 +10,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [celular, setCelular] = useState('');
+  const [isDeliverer, setIsDeliverer] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
@@ -18,20 +19,48 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setError('');
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    if (!error && data?.user) {
-      await supabase.from('users').insert([
-        { id: data.user.id, email, celular }
-      ]);
-    }
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
+    
+    try {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data?.user) {
+        const userRole = isDeliverer ? 'driver' : 'customer';
+        console.log('Inserindo usuário com role:', userRole); // Para debug
+        
+        const { error: insertError } = await supabase.from('users_').insert([
+          { 
+            id: data.user.id, 
+            email, 
+            celular,
+            user_role: userRole,
+            full_name: email.split('@')[0], // Nome temporário baseado no email
+            password_hash: 'auth_handled' // Placeholder já que a autenticação é gerenciada pelo Supabase Auth
+          }
+        ]);
+
+        if (insertError) {
+          console.error('Erro ao inserir usuário:', insertError);
+          setError('Erro ao criar perfil do usuário');
+          setLoading(false);
+          return;
+        }
+      }
+
+      setLoading(false);
       router.replace('/login');
+    } catch (err) {
+      console.error('Erro no registro:', err);
+      setError('Erro inesperado durante o cadastro');
+      setLoading(false);
     }
   };
 
@@ -91,6 +120,55 @@ export default function RegisterScreen() {
             onChangeText={setPassword}
             secureTextEntry
           />
+        </View>
+
+        {/* Seleção de tipo de usuário */}
+        <View style={styles.userTypeContainer}>
+          <Text style={[styles.userTypeTitle, isDark && styles.darkText]}>
+            Tipo de conta
+          </Text>
+          
+          <View style={styles.userTypeOptions}>
+            <TouchableOpacity
+              style={[
+                styles.userTypeOption,
+                !isDeliverer && styles.userTypeOptionSelected,
+                isDark ? styles.darkUserTypeOption : styles.lightUserTypeOption,
+                !isDeliverer && (isDark ? styles.darkUserTypeOptionSelected : styles.lightUserTypeOptionSelected)
+              ]}
+              onPress={() => setIsDeliverer(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.userTypeOptionText,
+                !isDeliverer && styles.userTypeOptionTextSelected,
+                isDark && styles.darkText,
+                !isDeliverer && styles.lightText
+              ]}>
+                Cliente
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.userTypeOption,
+                isDeliverer && styles.userTypeOptionSelected,
+                isDark ? styles.darkUserTypeOption : styles.lightUserTypeOption,
+                isDeliverer && (isDark ? styles.darkUserTypeOptionSelected : styles.lightUserTypeOptionSelected)
+              ]}
+              onPress={() => setIsDeliverer(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.userTypeOptionText,
+                isDeliverer && styles.userTypeOptionTextSelected,
+                isDark && styles.darkText,
+                isDeliverer && styles.lightText
+              ]}>
+                Entregador
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {error ? (
@@ -282,5 +360,59 @@ const styles = StyleSheet.create({
   },
   darkSecondaryText: {
     color: '#8E8E93',
+  },
+  lightText: {
+    color: '#FFFFFF',
+  },
+
+  // User Type Selection
+  userTypeContainer: {
+    marginBottom: 20,
+  },
+  userTypeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
+  },
+  userTypeOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  userTypeOption: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  lightUserTypeOption: {
+    backgroundColor: 'transparent',
+    borderColor: '#E0E0E0',
+  },
+  darkUserTypeOption: {
+    backgroundColor: 'transparent',
+    borderColor: '#3A3A3C',
+  },
+  userTypeOptionSelected: {
+    backgroundColor: '#FF7A00',
+  },
+  lightUserTypeOptionSelected: {
+    backgroundColor: '#FF7A00',
+    borderColor: '#FF7A00',
+  },
+  darkUserTypeOptionSelected: {
+    backgroundColor: '#FF7A00',
+    borderColor: '#FF7A00',
+  },
+  userTypeOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+  userTypeOptionTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
