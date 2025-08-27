@@ -3,14 +3,27 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
+import { useAuthUser } from '../hooks/useAuthUser';
 import { supabase } from '../lib/supabaseClient';
 
 
 export default function ProfileScreen() {
   const params = useLocalSearchParams();
+  const authUser = useAuthUser();
   const [user, setUser] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({ nome: '', sobrenome: '', celular: '', profile_picture_url: '' });
+
+  // Função de navegação personalizada para voltar
+  const handleBack = () => {
+    if (authUser?.user_role === 'driver') {
+      // Se for entregador, redirecionar para a tela de entregador
+      router.replace('/entregador');
+    } else {
+      // Se for cliente ou não logado, usar navegação padrão
+      router.back();
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -108,16 +121,14 @@ export default function ProfileScreen() {
       // @ts-ignore
       if (typeof window === 'undefined') {
         // mobile: use navigation
-        // @ts-ignore
-        const navigation = require('expo-router').useRouter();
-        navigation.replace('/login');
+        router.replace('/login');
       } else {
         // web: reload
         window.location.href = '/login';
       }
-    } catch (e) {
-      // fallback: reload
-      if (typeof window !== 'undefined') window.location.reload();
+    } catch {
+      // fallback
+      router.replace('/login');
     }
   };
 
@@ -128,7 +139,7 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <View style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 100 }}>
         <AppHeaderTransparent
-          onBack={() => router.back()}
+          onBack={handleBack}
           showCart={false}
           mode={isFromMenu ? 'menu' : 'back'}
         />
