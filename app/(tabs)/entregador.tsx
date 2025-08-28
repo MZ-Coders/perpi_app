@@ -172,17 +172,41 @@ export default function EntregadorDashboard() {
     return nextStatusMap[currentStatus] || null;
   };
 
-  const openMap = (pedido: Order) => {
+  const openMap = async (pedido: Order) => {
     if (pedido.latitude_entrega && pedido.longitude_entrega) {
-      router.push({
-        pathname: '/(tabs)/navegacao-entrega',
-        params: {
-          pedidoId: pedido.id.toString(),
-          latitude: pedido.latitude_entrega.toString(),
-          longitude: pedido.longitude_entrega.toString(),
-          endereco: pedido.endereco_entrega || 'Endereço não informado'
+      try {
+        // Importar dinamicamente para evitar problemas de compilação em plataformas sem suporte
+        const Location = await import('expo-location');
+        
+        // Solicitar permissão de localização
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        
+        if (status !== 'granted') {
+          Alert.alert('Permissão negada', 'Precisamos da permissão de localização para mostrar sua posição no mapa');
+          return;
         }
-      });
+        
+        // Obter localização atual do entregador
+        const entregadorLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High
+        });
+        
+        // Navegar para a tela do mapa com os parâmetros de origem (entregador) e destino (entrega)
+        router.push({
+          pathname: '/(tabs)/navegacao-entrega',
+          params: {
+            pedidoId: pedido.id.toString(),
+            latitude: pedido.latitude_entrega.toString(),
+            longitude: pedido.longitude_entrega.toString(),
+            entregadorLatitude: entregadorLocation.coords.latitude.toString(),
+            entregadorLongitude: entregadorLocation.coords.longitude.toString(),
+            endereco: pedido.endereco_entrega || 'Endereço não informado'
+          }
+        });
+      } catch (error) {
+        console.error('Erro ao obter localização:', error);
+        Alert.alert('Erro', 'Não foi possível obter sua localização atual');
+      }
     } else {
       Alert.alert('Erro', 'Coordenadas de entrega não disponíveis');
     }
@@ -331,7 +355,7 @@ export default function EntregadorDashboard() {
       <AppHeader title="Painel do Entregador" />
       
       {/* Status do entregador */}
-      <View style={styles.statusContainer}>
+      {/* <View style={styles.statusContainer}>
         <View style={styles.statusCard}>
           <Text style={styles.statusTitle}>Status: {entregador?.disponivel ? '🟢 Online' : '🔴 Offline'}</Text>
           <Pressable
@@ -343,7 +367,7 @@ export default function EntregadorDashboard() {
             </Text>
           </Pressable>
         </View>
-      </View>
+      </View> */}
 
       {/* Estatísticas */}
       <View style={styles.statsContainer}>

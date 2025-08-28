@@ -2,13 +2,13 @@ import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Linking,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import AppHeader from '../../components/AppHeader';
@@ -322,17 +322,17 @@ export default function NavegacaoEntregaScreen() {
             <Text style={styles.navigationButtonText}>🧭 Abrir Navegação</Text>
           </Pressable>
 
-          <Pressable
+          {/* <Pressable
             style={[styles.trackingButton, tracking ? styles.trackingButtonActive : styles.trackingButtonInactive]}
             onPress={toggleTracking}
           >
             <Text style={styles.trackingButtonText}>
               {tracking ? '⏸️ Pausar' : '▶️ Iniciar'} Rastreamento
             </Text>
-          </Pressable>
+          </Pressable> */}
         </View>
 
-        <View style={styles.statusButtons}>
+        {/* <View style={styles.statusButtons}>
           <Pressable style={styles.statusButton} onPress={marcarComoColetado}>
             <Text style={styles.statusButtonText}>✅ Coletado</Text>
           </Pressable>
@@ -344,7 +344,7 @@ export default function NavegacaoEntregaScreen() {
           <Pressable style={[styles.statusButton, styles.deliveredButton]} onPress={irParaConfirmacao}>
             <Text style={[styles.statusButtonText, styles.deliveredButtonText]}>📋 Entregue</Text>
           </Pressable>
-        </View>
+        </View> */}
       </View>
     </View>
   );
