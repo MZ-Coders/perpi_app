@@ -45,8 +45,18 @@ export function useAuthUser() {
       fetchUserWithRole(user);
     });
     
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      fetchUserWithRole(session?.user ?? null);
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Para novos logins, aguardar um pouco antes de buscar o role
+        // para garantir que os dados foram salvos na tabela users_
+        setTimeout(() => {
+          fetchUserWithRole(session.user);
+        }, 500);
+      } else {
+        fetchUserWithRole(session?.user ?? null);
+      }
     });
     
     return () => { listener?.subscription?.unsubscribe?.(); };

@@ -13,6 +13,7 @@ export default function RegisterScreen() {
   const [celularNumber, setCelularNumber] = useState(''); // Apenas a parte do número sem +258
   const [isDeliverer, setIsDeliverer] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
   const router = useRouter();
@@ -58,6 +59,7 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     setError('');
+    setSuccess('');
     setLoading(true);
     
     // Validação das senhas
@@ -113,10 +115,55 @@ export default function RegisterScreen() {
           setLoading(false);
           return;
         }
+
+        // Usuário criado com sucesso - navegar diretamente para a tela principal
+        console.log('Usuário criado com sucesso, navegando para tela principal');
+        setSuccess('Conta criada com sucesso! Redirecionando...');
+        
+        // Aguardar um pouco para garantir que os dados foram salvos
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Forçar recarregamento da sessão para garantir que o role seja carregado
+        await supabase.auth.refreshSession();
+        
+        // Verificar novamente o usuário e role para garantir navegação correta
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (currentUser) {
+          const { data: userData } = await supabase
+            .from('users_')
+            .select('user_role')
+            .eq('id', currentUser.id)
+            .single();
+          
+          const actualRole = userData?.user_role || (isDeliverer ? 'driver' : 'customer');
+          console.log('Role do usuário após criação:', actualRole);
+          console.log('Dados do usuário:', userData);
+          
+          // Pequena pausa para mostrar feedback de sucesso
+          setTimeout(() => {
+            // Navegar para a tela principal baseado no role real do usuário
+            if (actualRole === 'driver') {
+              console.log('Navegando para tela de entregador');
+              router.replace('/entregador');
+            } else {
+              console.log('Navegando para tela de cliente');
+              router.replace('/');
+            }
+          }, 1000);
+        } else {
+          // Fallback para navegação baseada na seleção do usuário
+          setTimeout(() => {
+            if (isDeliverer) {
+              router.replace('/entregador');
+            } else {
+              router.replace('/');
+            }
+          }, 1000);
+        }
       }
 
       setLoading(false);
-      router.replace('/login');
     } catch (err) {
       console.error('Erro no registro:', err);
       setError('Erro inesperado durante o cadastro');
@@ -295,6 +342,10 @@ export default function RegisterScreen() {
           <Text style={styles.errorText}>{error}</Text>
         ) : null}
 
+        {success ? (
+          <Text style={styles.successText}>{success}</Text>
+        ) : null}
+
         {/* Primary Button */}
         <TouchableOpacity
           style={[
@@ -314,7 +365,7 @@ export default function RegisterScreen() {
           activeOpacity={0.9}
         >
           <Text style={styles.primaryButtonText}>
-            {loading ? 'Cadastrando...' : 'Criar Conta'}
+            {loading ? 'Criando conta...' : 'Criar Conta'}
           </Text>
         </TouchableOpacity>
 
@@ -483,6 +534,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 16,
+  },
+
+  // Success
+  successText: {
+    color: '#34C759',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontWeight: '600',
   },
 
   // Dark theme text
