@@ -299,6 +299,15 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
 
+          {/* Botão de Endereços */}
+          <TouchableOpacity 
+            style={styles.addressButton} 
+            onPress={() => router.push('/addresses')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.addressButtonText}>GERENCIAR ENDEREÇOS</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity 
             style={styles.logoutButton} 
             onPress={handleLogout}
@@ -539,6 +548,28 @@ const styles = StyleSheet.create({
     color: '#008A44',
     fontSize: 14,
     fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  addressButton: {
+    backgroundColor: '#008A44',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#008A44',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addressButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
     letterSpacing: 0.5,
   },
   logoutButton: {

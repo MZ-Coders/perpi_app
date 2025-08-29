@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Animated, FlatList, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import AddressSelector from '../../components/AddressSelector';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import { supabase } from '../../lib/supabaseClient';
@@ -20,6 +21,9 @@ export default function CartScreen() {
   // Estado do carrinho
   const [cartItems, setCartItems] = useState<any[]>([]);
 
+  // Estado do endereço selecionado
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
+
   // Estado de sucesso
   const [success, setSuccess] = useState(false);
 
@@ -36,6 +40,12 @@ export default function CartScreen() {
 
   // Função para abrir modal de confirmação
   function showPurchaseConfirmation() {
+    // Verificar se o endereço foi selecionado
+    if (!selectedAddress) {
+      // Não mostrar alert, apenas não permitir continuar
+      return;
+    }
+    
     setShowConfirmModal(true);
     // Animar entrada do modal
     Animated.parallel([
@@ -92,6 +102,9 @@ export default function CartScreen() {
         .single();
       if (userError || !userData) throw userError || new Error('Endereço do usuário não encontrado');
 
+      // Usar o endereço selecionado em vez do endereço do perfil do usuário
+      const deliveryAddress = selectedAddress || userData;
+
       // 1. Criar pedido com endereço completo
       const totalAmount = cartItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
       const { data: order, error: orderError } = await supabase
@@ -102,12 +115,12 @@ export default function CartScreen() {
           payment_method: 'mpesa',
           payment_status: 'pending',
           customer_id: USER_ID,
-          endereco_entrega: userData.endereco,
-          cidade_entrega: userData.cidade,
-          provincia_entrega: userData.provincia,
+          endereco_entrega: deliveryAddress.street || userData.endereco,
+          cidade_entrega: deliveryAddress.city || userData.cidade,
+          provincia_entrega: deliveryAddress.state || userData.provincia,
           pais_entrega: userData.pais,
-          latitude_entrega: userData.latitude,
-          longitude_entrega: userData.longitude
+          latitude_entrega: deliveryAddress.latitude || userData.latitude,
+          longitude_entrega: deliveryAddress.longitude || userData.longitude
         })
         .select()
         .single();
@@ -177,8 +190,9 @@ export default function CartScreen() {
         router.back();
       });
     }, 2500);
-    } catch (err) {
+    } catch (error) {
       setLoading(false);
+      console.error('Erro na compra:', error);
       // Exibe erro simples na tela
       setSuccess(false);
     }
@@ -230,8 +244,7 @@ export default function CartScreen() {
     updateCart(newCart);
   }
 
-  // Corrigir cálculo do total do carrinho
-  const cartTotal = cartItems.reduce((sum: number, item: any) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
+  // Corrigir cálculo do total do carrinho - removido pois não é usado
 
   return (
     <View style={styles.container}>
@@ -240,6 +253,18 @@ export default function CartScreen() {
       </View>
       <View style={{ height: 80 }} />
       <Text style={styles.title}>Meu Carrinho</Text>
+      
+      {/* Seletor de Endereço */}
+      {user && (
+        <View style={styles.addressSection}>
+          <AddressSelector
+            selectedAddress={selectedAddress}
+            onAddressSelect={setSelectedAddress}
+            isRequired={true}
+            style={styles.addressSelector}
+          />
+        </View>
+      )}
       {success && (
         <Animated.View 
           style={[
@@ -267,7 +292,7 @@ export default function CartScreen() {
             </Text>
             <View style={styles.successDivider} />
             <Text style={styles.successSubtext}>
-              Você pode acompanhar o status do seu pedido na aba "Pedidos"
+              Você pode acompanhar o status do seu pedido na aba &quot;Pedidos&quot;
             </Text>
           </Animated.View>
         </Animated.View>
@@ -313,14 +338,19 @@ export default function CartScreen() {
       </View>
       {user ? (
         <TouchableOpacity
-          style={[styles.buyBtn, cartItems.length === 0 && { opacity: 0.6 }]}
+          style={[
+            styles.buyBtn, 
+            (cartItems.length === 0 || !selectedAddress) && { opacity: 0.6 }
+          ]}
           onPressOut={showPurchaseConfirmation}
-          disabled={cartItems.length === 0 || loading}
+          disabled={cartItems.length === 0 || loading || !selectedAddress}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buyBtnText}>Comprar</Text>
+            <Text style={styles.buyBtnText}>
+              {!selectedAddress ? 'Selecione um endereço para continuar' : 'Comprar'}
+            </Text>
           )}
         </TouchableOpacity>
       ) : (
@@ -373,6 +403,20 @@ export default function CartScreen() {
               <Text style={styles.modalTotal}>
                 MZN {cartItems.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0).toFixed(2)}
               </Text>
+              
+              {/* Mostrar endereço de entrega selecionado */}
+              {selectedAddress && (
+                <View style={styles.deliveryAddressContainer}>
+                  <Text style={styles.deliveryTitle}>Entregar em:</Text>
+                  <Text style={styles.deliveryAddress}>
+                    {selectedAddress.street}
+                  </Text>
+                  <Text style={styles.deliveryDetails}>
+                    {selectedAddress.city}, {selectedAddress.state} - {selectedAddress.zip_code}
+                  </Text>
+                </View>
+              )}
+              
               <Text style={styles.modalSubtext}>
                 Deseja continuar com o pagamento via M-Pesa?
               </Text>
@@ -410,6 +454,15 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA', padding: 20 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#008A44', marginBottom: 20, textAlign: 'center' },
+  
+  // Estilos para o seletor de endereço
+  addressSection: {
+    marginBottom: 20,
+  },
+  addressSelector: {
+    marginBottom: 0,
+  },
+  
   emptyText: { textAlign: 'center', marginVertical: 24, color: '#5C5C5C', fontSize: 16 },
   cartItemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   cartItemImg: { width: 48, height: 48, borderRadius: 8, marginRight: 14, backgroundColor: '#FDFDFB' },
@@ -576,6 +629,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  
+  // Estilos para endereço de entrega no modal
+  deliveryAddressContainer: {
+    backgroundColor: '#F0F8F4',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+    borderWidth: 1,
+    borderColor: '#008A44',
+  },
+  deliveryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#008A44',
+    marginBottom: 8,
+  },
+  deliveryAddress: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  deliveryDetails: {
+    fontSize: 14,
+    color: '#666',
+  },
+  
   modalActions: {
     flexDirection: 'row',
     gap: 12,
