@@ -13,9 +13,10 @@ interface AppHeaderProps {
   onMenuPress?: () => void;
   showCart?: boolean;
   showUser?: boolean;
+  backMode?: boolean;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart = true, showUser = true }) => {
+const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart = true, showUser = true, backMode = false }) => {
   const router = useRouter();
   const navigation = useNavigation();
   const user = useAuthUser();
@@ -87,9 +88,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart
             }
           }}
           style={styles.iconButton}
-          accessibilityLabel="Abrir menu"
+          accessibilityLabel={backMode ? "Voltar" : "Abrir menu"}
         >
-          <Icon name="menu" size={28} color="#fff" />
+          <Icon name={backMode ? "arrow-left" : "menu"} size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>{title}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>

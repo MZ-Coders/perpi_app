@@ -228,35 +228,65 @@ const getStatusIcon = (status: string) => {
             <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
           </View>
           <View style={styles.orderHeaderRight}>
-            <View style={[styles.statusBadge, styles.statusBadgeGray]}> 
+            {/* Desabilidando a visaulizacao do status para o utilizador por clicar em ver acompanhamento */}
+            {/* <View style={[styles.statusBadge, styles.statusBadgeGray]}> 
               <View style={styles.statusIconWrapper}>
                 {getStatusIcon(item.order_status)}
               </View>
               <Text style={[styles.statusText, getStatusTextColor(item.order_status)]}>{getStatusText(item.order_status)}</Text>
-            </View>
+            </View> */}
             {/* Botão de rastreamento, exatamente abaixo do status e mesmo tamanho */}
             {showTrackButton && (
-              <TouchableOpacity
-                style={[
-                  styles.statusBadge,
-                  styles.trackButton,
-                  {
-                    marginTop: 8,
-                    alignSelf: 'stretch',
-                    minWidth: 100,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 12,
-                    paddingVertical: styles.statusBadge.paddingVertical // igual ao status
-                  }
-                ]}
-                onPress={() => router.push({ pathname: '/order-tracking', params: { orderId: item.id } })}
-              >
-                <MaterialCommunityIcons name="map-marker-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.trackButtonText}>Rastrear</Text>
-              </TouchableOpacity>
+              <>
+              {/* Desabilitando rastreamento por parte do cliente. Sera trabalhando na versao a posterior */}
+
+              
+                {/* <TouchableOpacity
+                  style={[
+                    styles.statusBadge,
+                    styles.trackButton,
+                    {
+                      marginTop: 8,
+                      alignSelf: 'stretch',
+                      minWidth: 100,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 12,
+                      paddingVertical: styles.statusBadge.paddingVertical // igual ao status
+                    }
+                  ]}
+                  onPress={() => router.push({ pathname: '/order-tracking', params: { orderId: item.id } })}
+                >
+                  <MaterialCommunityIcons name="map-marker-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.trackButtonText}>Rastrear</Text>
+                </TouchableOpacity>
+                 */}
+                
+              </>
             )}
+            <TouchableOpacity
+                  style={[
+                    styles.statusBadge,
+                    styles.followButton,
+                    {
+                      marginTop: 8,
+                      alignSelf: 'stretch',
+                      minWidth: 100,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 12,
+                      paddingVertical: styles.statusBadge.paddingVertical // igual ao status
+                    }
+                  ]}
+                  onPress={() => {
+                    router.push({ pathname: '/order-follow', params: { orderId: item.id } });
+                  }}
+                >
+                  <MaterialCommunityIcons name="eye-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.followButtonText}>Acompanhar</Text>
+                </TouchableOpacity>
           </View>
         </View>
 
@@ -763,6 +793,28 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   trackButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  
+  // Botão de acompanhamento
+  followButton: {
+    marginTop: 16,
+    backgroundColor: '#2196F3',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  followButtonText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
