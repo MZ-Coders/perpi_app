@@ -322,14 +322,14 @@ export default function NavegacaoEntregaScreen() {
             <Text style={styles.navigationButtonText}>🧭 Abrir Navegação</Text>
           </Pressable>
 
-          {/* <Pressable
+          <Pressable
             style={[styles.trackingButton, tracking ? styles.trackingButtonActive : styles.trackingButtonInactive]}
             onPress={toggleTracking}
           >
             <Text style={styles.trackingButtonText}>
               {tracking ? '⏸️ Pausar' : '▶️ Iniciar'} Rastreamento
             </Text>
-          </Pressable> */}
+          </Pressable>
         </View>
 
         {/* <View style={styles.statusButtons}>
