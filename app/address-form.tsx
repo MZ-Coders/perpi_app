@@ -3,17 +3,17 @@ import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import AppHeader from '../components/AppHeader';
 import { useAuthUser } from '../hooks/useAuthUser';
@@ -35,6 +35,8 @@ export default function AddressFormScreen() {
   const user = useAuthUser();
   const isEditing = !!id;
 
+  console.log('AddressFormScreen iniciado:', { id, isEditing, userId: user?.id });
+
   const [form, setForm] = useState<AddressForm>({
     street: '',
     city: '',
@@ -50,14 +52,31 @@ export default function AddressFormScreen() {
   const fetchAddress = useCallback(async () => {
     try {
       setInitialLoading(true);
+      
+      // Converter id para número se necessário
+      const addressId = typeof id === 'string' ? parseInt(id, 10) : id;
+      
+      console.log('Tentando buscar endereço com ID:', addressId, 'tipo:', typeof addressId);
+      console.log('Usuário ID:', user?.id);
+      
       const { data, error } = await supabase
         .from('addresses')
         .select('*')
-        .eq('id', id)
+        .eq('id', addressId)
         .eq('user_id', user?.id)
         .single();
 
-      if (error || !data) {
+      console.log('Resposta do banco:', { data, error });
+
+      if (error) {
+        console.error('Erro do Supabase:', error);
+        Alert.alert('Erro', `Endereço não encontrado: ${error.message}`);
+        router.back();
+        return;
+      }
+
+      if (!data) {
+        console.error('Nenhum dado retornado');
         Alert.alert('Erro', 'Endereço não encontrado');
         router.back();
         return;
@@ -82,10 +101,11 @@ export default function AddressFormScreen() {
   }, [id, user?.id, router]);
 
   useEffect(() => {
-    if (isEditing && id) {
+    console.log('useEffect disparado:', { id, isEditing, userLoaded: !!user?.id });
+    if (isEditing && id && user?.id) {
       fetchAddress();
     }
-  }, [id, isEditing, fetchAddress]);
+  }, [id, isEditing, fetchAddress, user?.id]);
 
   const getCurrentLocation = async () => {
     try {
@@ -199,10 +219,12 @@ export default function AddressFormScreen() {
 
       if (isEditing) {
         // Atualizar endereço existente
+        const addressId = typeof id === 'string' ? parseInt(id, 10) : id;
+        
         const { error } = await supabase
           .from('addresses')
           .update(addressData)
-          .eq('id', id)
+          .eq('id', addressId)
           .eq('user_id', user.id);
 
         if (error) {
