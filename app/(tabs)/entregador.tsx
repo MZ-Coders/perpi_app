@@ -355,7 +355,7 @@ export default function EntregadorDashboard() {
       <AppHeader title="Painel do Entregador" />
       
       {/* Status do entregador */}
-      {/* <View style={styles.statusContainer}>
+      <View style={styles.statusContainer}>
         <View style={styles.statusCard}>
           <Text style={styles.statusTitle}>Status: {entregador?.disponivel ? '🟢 Online' : '🔴 Offline'}</Text>
           <Pressable
@@ -367,7 +367,7 @@ export default function EntregadorDashboard() {
             </Text>
           </Pressable>
         </View>
-      </View> */}
+      </View>
 
       {/* Estatísticas */}
       <View style={styles.statsContainer}>
