@@ -370,7 +370,7 @@ export default function EntregadorDashboard() {
       </View>
 
       {/* Estatísticas */}
-      <View style={styles.statsContainer}>
+      {/* <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{estatisticas.pedidosHoje}</Text>
           <Text style={styles.statLabel}>Entregas</Text>
@@ -387,7 +387,7 @@ export default function EntregadorDashboard() {
           <Text style={styles.statNumber}>{estatisticas.tempoMedioEntrega}</Text>
           <Text style={styles.statLabel}>Tempo Médio</Text>
         </View>
-      </View>
+      </View> */}
 
       {/* Lista de pedidos */}
       <View style={styles.section}>
