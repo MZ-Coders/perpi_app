@@ -1,17 +1,17 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import AppHeader from '../../components/AppHeader';
 import { useAuthUser } from '../../hooks/useAuthUser';
@@ -43,6 +43,31 @@ export default function CadastroEntregadorScreen() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
+  // Verificar se o usuário já possui cadastro ao carregar a tela
+  useEffect(() => {
+    const verificarCadastroExistente = async () => {
+      try {
+        const { jaCadastrado } = await EntregadorService.verificarUsuarioJaCadastrado();
+        if (jaCadastrado) {
+          Alert.alert(
+            'Cadastro Existente',
+            'Você já possui um cadastro de entregador. Será redirecionado para o painel do entregador.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/(tabs)/entregador')
+              }
+            ]
+          );
+        }
+      } catch (error) {
+        console.log('Erro ao verificar cadastro existente:', error);
+      }
+    };
+
+    verificarCadastroExistente();
+  }, []);
+
   // Calcular progresso do formulário
   const calcularProgresso = (): number => {
     const camposObrigatorios = [
@@ -66,7 +91,7 @@ export default function CadastroEntregadorScreen() {
     return Math.round((preenchidos / (camposObrigatorios.length + 2)) * 100);
   };
 
-  const handleInputChange = (campo: keyof FormularioCadastroEntregador, valor: any) => {
+  const handleInputChange = async (campo: keyof FormularioCadastroEntregador, valor: any) => {
     setFormulario(prev => ({
       ...prev,
       [campo]: valor
@@ -78,6 +103,33 @@ export default function CadastroEntregadorScreen() {
         ...prev,
         [campo]: ''
       }));
+    }
+
+    // Validação específica para email
+    if (campo === 'email' && valor.length > 0) {
+      // Validação básica de formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(valor)) {
+        setErrors(prev => ({
+          ...prev,
+          email: 'Formato de email inválido'
+        }));
+        return;
+      }
+
+      // Verificar se o email já está em uso (apenas se o formato estiver correto)
+      try {
+        const { disponivel } = await EntregadorService.verificarEmailDisponivel(valor);
+        if (!disponivel) {
+          setErrors(prev => ({
+            ...prev,
+            email: 'Este email já está sendo usado por outro entregador'
+          }));
+        }
+      } catch (error) {
+        console.log('Erro ao verificar email:', error);
+        // Não mostrar erro aqui para não interromper a digitação
+      }
     }
   };
 
@@ -170,8 +222,12 @@ export default function CadastroEntregadorScreen() {
 
       if (error) {
         console.error('Erro ao cadastrar:', error);
-        if (error.code === '23505') {
-          Alert.alert('Erro', 'Você já possui um cadastro de entregador.');
+        
+        // Verificar se é uma mensagem de erro personalizada (nossas validações)
+        if (error.message) {
+          Alert.alert('Erro', error.message);
+        } else if (error.code === '23505') {
+          Alert.alert('Erro', 'Você já possui um cadastro de entregador ou este email já está sendo usado.');
         } else {
           Alert.alert('Erro', 'Não foi possível completar o cadastro. Tente novamente.');
         }

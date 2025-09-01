@@ -1,17 +1,99 @@
 import { supabase } from '../lib/supabaseClient';
 import type {
-    AvaliacaoEntregador,
-    Entregador,
-    FormularioCadastroEntregador
+  AvaliacaoEntregador,
+  Entregador,
+  FormularioCadastroEntregador
 } from '../types/entregador';
 
 export class EntregadorService {
+  // Verificar se email já está em uso
+  static async verificarEmailDisponivel(email: string): Promise<{ disponivel: boolean; error: any }> {
+    try {
+      const { error } = await supabase
+        .from('entregadores')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // Erro PGRST116 significa que não encontrou nenhum registro (email disponível)
+        return { disponivel: true, error: null };
+      }
+
+      if (error) {
+        return { disponivel: false, error };
+      }
+
+      // Se encontrou um registro, email já está em uso
+      return { disponivel: false, error: null };
+    } catch (error) {
+      return { disponivel: false, error };
+    }
+  }
+
+  // Verificar se usuário já possui cadastro
+  static async verificarUsuarioJaCadastrado(): Promise<{ jaCadastrado: boolean; error: any }> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { error } = await supabase
+        .from('entregadores')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // Não encontrou cadastro
+        return { jaCadastrado: false, error: null };
+      }
+
+      if (error) {
+        return { jaCadastrado: false, error };
+      }
+
+      // Encontrou cadastro
+      return { jaCadastrado: true, error: null };
+    } catch (error) {
+      return { jaCadastrado: false, error };
+    }
+  }
+
   // Cadastro de entregador
   static async cadastrarEntregador(dados: FormularioCadastroEntregador): Promise<{ data: Entregador | null; error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
+      // Verificar se já existe um entregador com este user_id
+      const { data: entregadorExistente } = await supabase
+        .from('entregadores')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (entregadorExistente) {
+        return { 
+          data: null, 
+          error: { message: 'Você já possui um cadastro de entregador. Não é possível criar múltiplos cadastros com a mesma conta.' }
+        };
+      }
+
+      // Verificar se já existe um entregador com este email
+      const { data: emailExistente } = await supabase
+        .from('entregadores')
+        .select('id')
+        .eq('email', dados.email)
+        .single();
+
+      if (emailExistente) {
+        return { 
+          data: null, 
+          error: { message: 'Este email já está sendo usado por outro entregador. Use um email diferente.' }
+        };
+      }
+
+      // Se passou nas validações, criar o entregador
       const { data, error } = await supabase
         .from('entregadores')
         .insert({
