@@ -10,28 +10,34 @@ export default function OrderTrackingScreen() {
   const [locError, setLocError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      // Web: usar navigator.geolocation
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          },
-          (err) => {
-            console.error('Erro de geolocalização:', err);
-            setLocError('Não foi possível obter sua localização.');
-            // Localização padrão para Beira, Sofala
-            setLocation({ lat: -19.8333, lng: 34.8500 });
-          }
-        );
+    try {
+      if (Platform.OS === 'web') {
+        // Web: usar navigator.geolocation
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            },
+            (err) => {
+              console.error('Erro de geolocalização:', err);
+              setLocError('Não foi possível obter sua localização.');
+              // Localização padrão para Beira, Sofala
+              setLocation({ lat: -19.8333, lng: 34.8500 });
+            }
+          );
+        } else {
+          setLocError('Geolocalização não suportada.');
+          // Localização padrão para Beira, Sofala
+          setLocation({ lat: -19.8333, lng: 34.8500 });
+        }
       } else {
-        setLocError('Geolocalização não suportada.');
-  // Localização padrão para Beira, Sofala
-  setLocation({ lat: -19.8333, lng: 34.8500 });
+        // Mobile: usar uma localização padrão para teste (Beira, Sofala)
+        setLocation({ lat: -19.8333, lng: 34.8500 });
       }
-    } else {
-  // Mobile: usar uma localização padrão para teste (Beira, Sofala)
-  setLocation({ lat: -19.8333, lng: 34.8500 });
+    } catch (error) {
+      console.error('Erro no useEffect:', error);
+      setLocError('Erro inesperado.');
+      setLocation({ lat: -19.8333, lng: 34.8500 });
     }
   }, []);
 

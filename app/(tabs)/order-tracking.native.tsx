@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 
 export default function OrderTrackingScreen() {
@@ -100,21 +100,7 @@ export default function OrderTrackingScreen() {
         style={styles.map}
         initialRegion={region}
         showsUserLocation={true}
-        showsMyLocationButton={true}
-        followsUserLocation={true}
       >
-        {/* Marcador da localização do usuário */}
-        {userLocation && (
-          <Marker
-            coordinate={{
-              latitude: userLocation.coords.latitude,
-              longitude: userLocation.coords.longitude,
-            }}
-            title="Você está aqui"
-            description="Sua localização atual"
-          />
-        )}
-        
         {/* Marcador do local de entrega */}
         {location && (
           <Marker
@@ -122,25 +108,6 @@ export default function OrderTrackingScreen() {
             title="Local de Entrega"
             description="Seu pedido será entregue aqui"
             pinColor="red"
-          />
-        )}
-
-        {/* Rota entre usuário e local de entrega */}
-        {userLocation && location && (
-          <Polyline
-            coordinates={[
-              {
-                latitude: userLocation.coords.latitude,
-                longitude: userLocation.coords.longitude,
-              },
-              {
-                latitude: location.lat,
-                longitude: location.lng,
-              },
-            ]}
-            strokeColor="#FF6B6B" // Cor vermelha para a rota
-            strokeWidth={4}
-            lineDashPattern={[5, 5]} // Linha tracejada
           />
         )}
       </MapView>
