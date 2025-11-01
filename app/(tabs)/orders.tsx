@@ -287,6 +287,28 @@ const getStatusIcon = (status: string) => {
                   <MaterialCommunityIcons name="eye-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
                   <Text style={styles.followButtonText}>Acompanhar</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.statusBadge,
+                    styles.trackingButton,
+                    {
+                      marginTop: 8,
+                      alignSelf: 'stretch',
+                      minWidth: 100,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 12,
+                      paddingVertical: styles.statusBadge.paddingVertical
+                    }
+                  ]}
+                  onPress={() => {
+                    router.push({ pathname: '/order-tracking', params: { orderId: item.id } });
+                  }}
+                >
+                  <MaterialCommunityIcons name="map-marker-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.trackingButtonText}>Mapa</Text>
+                </TouchableOpacity>
           </View>
         </View>
 
@@ -939,5 +961,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  // Botão de acompanhamento (mapa)
+  trackingButton: {
+    marginTop: 16,
+    backgroundColor: '#FF9500',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF9500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  trackingButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });

@@ -3,54 +3,57 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import AppHeaderTransparent from '../../components/AppHeaderTransparent';
 
-// Componente de mapa para web usando Leaflet via CDN
+// Componente de mapa para web usando Google Maps
 function WebMapComponent({ lat, lng }: { lat: number; lng: number }) {
   React.useEffect(() => {
-    // Carregar CSS do Leaflet
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
+    const apiKey = 'AIzaSyCnpCyj24lpS3TzZ-8fy8Y4E9VWQ3i26t8'; // Sua chave da API do Google Maps
 
-    // Carregar JS do Leaflet
-    if (!(window as any).L) {
+    // Carregar Google Maps JS API
+    if (!document.getElementById('google-maps-script')) {
       const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet/dist/leaflet.js';
+      script.id = 'google-maps-script';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
       script.onload = () => initMap();
       document.head.appendChild(script);
-    } else {
+    } else if ((window as any).google && (window as any).google.maps) {
       initMap();
+    } else {
+      // Aguardar o script carregar
+      const checkGoogle = setInterval(() => {
+        if ((window as any).google && (window as any).google.maps) {
+          clearInterval(checkGoogle);
+          initMap();
+        }
+      }, 100);
     }
 
     function initMap() {
-      const L = (window as any).L;
+      const google = (window as any).google;
       const mapId = 'order-tracking-map';
       
       // Limpar mapa anterior se existir
-      if ((window as any)._orderTrackingMap) {
-        (window as any)._orderTrackingMap.remove();
-      }
+      const mapElement = document.getElementById(mapId);
+      if (!mapElement) return;
 
-      const map = L.map(mapId).setView([lat, lng], 15);
+      const map = new google.maps.Map(mapElement, {
+        center: { lat, lng },
+        zoom: 15,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+      });
+
+      // Marcador
+      new google.maps.Marker({
+        position: { lat, lng },
+        map,
+        title: 'Você está aqui',
+      });
+
+      // Salvar referência para limpeza
       (window as any)._orderTrackingMap = map;
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© Perpi 2025',
-      }).addTo(map);
-
-      // Ícone padrão ou personalizado
-      const marker = L.marker([lat, lng]).addTo(map);
-      marker.bindPopup('Você está aqui').openPopup();
     }
 
     return () => {
-      if ((window as any)._orderTrackingMap) {
-        (window as any)._orderTrackingMap.remove();
-        (window as any)._orderTrackingMap = null;
-      }
+      // Limpeza se necessário
     };
   }, [lat, lng]);
   

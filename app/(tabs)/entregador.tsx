@@ -1,3 +1,4 @@
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -172,12 +173,9 @@ export default function EntregadorDashboard() {
     return nextStatusMap[currentStatus] || null;
   };
 
-  const openMap = async (pedido: Order) => {
+  const openTracking = async (pedido: Order) => {
     if (pedido.latitude_entrega && pedido.longitude_entrega) {
       try {
-        // Importar dinamicamente para evitar problemas de compilação em plataformas sem suporte
-        const Location = await import('expo-location');
-        
         // Solicitar permissão de localização
         const { status } = await Location.requestForegroundPermissionsAsync();
         
@@ -326,10 +324,10 @@ export default function EntregadorDashboard() {
 
       <View style={styles.actionButtons}>
         <Pressable
-          style={styles.mapButton}
-          onPress={() => openMap(pedido)}
+          style={styles.trackingButton}
+          onPress={() => openTracking(pedido)}
         >
-          <Text style={styles.mapButtonText}>🗺️ Ver no Mapa</Text>
+          <Text style={styles.trackingButtonText}>📍 Acompanhamento</Text>
         </Pressable>
 
         {getNextStatus(pedido.order_status) && (
@@ -745,5 +743,17 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  trackingButton: {
+    flex: 1,
+    backgroundColor: '#FF9500',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  trackingButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

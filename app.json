@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCnpCyj24lpS3TzZ-8fy8Y4E9VWQ3i26t8"
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +22,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.perpi.market"
+      "package": "com.perpi.market",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCnpCyj24lpS3TzZ-8fy8Y4E9VWQ3i26t8"
+        }
+      }
     },
     "web": {
       "bundler": "metro",
