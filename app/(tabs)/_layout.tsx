@@ -2,57 +2,37 @@
 
 
 import { useColorScheme } from '@/hooks/useColorScheme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
-import { useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
-import { Platform, Text, TouchableOpacity } from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { Colors } from '../../constants/Colors';
 import { useAuthUser } from '../../hooks/useAuthUser';
-import DrawerUserHeader from '../components/DrawerUserHeader';
+// Componente para exibir o logo do app no drawer
+function LogoHeader() {
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 32 }}>
+      <Image
+        source={require('../../assets/images/logo.jpeg')}
+        style={{ width: 95, height: 95, borderRadius: 26, marginBottom: 8 }}
+        resizeMode="contain"
+      />
+    </View>
+  );
+}
+// import DrawerUserHeader from '../components/DrawerUserHeader';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const user = useAuthUser();
-  const router = useRouter();
   // Só renderiza após checar o estado do usuário (undefined = carregando)
   const [checked, setChecked] = React.useState(false);
-  const [headerRefresh, setHeaderRefresh] = React.useState(0);
-  const [cartCount, setCartCount] = React.useState(0);
 
-  // Atualiza a quantidade de itens do carrinho sempre que a tela recebe foco
   // Atualiza badge ao receber foco ou evento customizado
-  React.useEffect(() => {
-    const updateCartCount = async () => {
-      const data = await AsyncStorage.getItem('cart');
-      if (data) {
-        try {
-          const arr = JSON.parse(data);
-          setCartCount(Array.isArray(arr) ? arr.length : 0);
-        } catch {
-          setCartCount(0);
-        }
-      } else {
-        setCartCount(0);
-      }
-    };
-    updateCartCount();
-    // Escuta evento customizado disparado em cart.tsx (apenas no web)
-    const handler = () => updateCartCount();
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function' && Platform.OS === 'web') {
-      window.addEventListener('cartUpdated', handler);
-      return () => {
-        window.removeEventListener('cartUpdated', handler);
-      };
-    }
-    return undefined;
-  }, [user]);
   React.useEffect(() => {
     setChecked(true);
   }, [user]);
-  React.useEffect(() => { setHeaderRefresh(r => r + 1); }, [user]);
   if (!checked) return null;
   return (
     <Drawer
@@ -64,18 +44,34 @@ export default function TabLayout() {
       drawerContent={props => {
         // Renderiza manualmente os itens do Drawer para garantir apenas labels em português
         const { navigation, state } = props;
-        const screens = [
-          { key: 'index', label: 'Productos', icon: 'home' },
-          ...(user ? [
-            { key: 'orders', label: 'Compras', icon: 'clipboard' },
-            // { key: 'favorites', label: 'Favoritos', icon: 'heart' },
+        
+        // Define os itens do menu baseado no user_role
+        let screens = [];
+        
+        if (!user) {
+          // Usuário não logado - apenas produtos
+          screens = [
+            { key: 'index', label: 'Productos', icon: 'home' },
+          ];
+        } else if (user.user_role === 'driver') {
+          // Entregador - apenas Entregador e Perfil
+          screens = [
+            { key: 'entregador', label: 'Entregador', icon: 'truck' },
             { key: 'profile', label: 'Perfil', icon: 'user' },
-          ] : []),
-          // { key: 'explore', label: 'Explorar', icon: 'search' },
-        ];
+          ];
+        } else {
+          // Cliente regular - menu sem Entregador
+          screens = [
+            { key: 'index', label: 'Productos', icon: 'home' },
+            { key: 'orders', label: 'Compras', icon: 'clipboard' },
+            { key: 'profile', label: 'Perfil', icon: 'user' },
+          ];
+        }
         return (
           <DrawerContentScrollView {...props}>
-            <DrawerUserHeader trigger={headerRefresh} />
+            {/* Exibe apenas o logo do app no topo do menu */}
+            <LogoHeader />
+            {/* Botão de login, sem avatar ou texto 'guest' */}
             {!user && (
               <TouchableOpacity
                 onPress={() => navigation.navigate('login')}
@@ -125,27 +121,54 @@ export default function TabLayout() {
           headerShown: false,
         }}
       />
-      {/* Adiciona explicitamente as rotas de Favoritos e Perfil para garantir navegação */}
+      {/* Adiciona explicitamente as rotas baseadas no user_role */}
       {user ? (
         <>
-          <Drawer.Screen
-            name="favorites"
-            options={{
-              drawerLabel: 'Favoritos',
-              title: 'Favoritos',
-              headerTitle: 'Favoritos',
-              headerShown: false,
-            }}
-          />
-          <Drawer.Screen
-            name="profile"
-            options={{
-              drawerLabel: 'Perfil',
-              title: 'Perfil',
-              headerTitle: 'Perfil',
-              headerShown: false,
-            }}
-          />
+          {user.user_role === 'driver' ? (
+            // Menu para entregadores - apenas Entregador e Perfil
+            <>
+              <Drawer.Screen
+                name="entregador"
+                options={{
+                  drawerLabel: 'Entregador',
+                  title: 'Painel do Entregador',
+                  headerTitle: 'Painel do Entregador',
+                  headerShown: false,
+                }}
+              />
+              <Drawer.Screen
+                name="profile"
+                options={{
+                  drawerLabel: 'Perfil',
+                  title: 'Perfil',
+                  headerTitle: 'Perfil',
+                  headerShown: false,
+                }}
+              />
+            </>
+          ) : (
+            // Menu para clientes regulares - sem Entregador
+            <>
+              <Drawer.Screen
+                name="favorites"
+                options={{
+                  drawerLabel: 'Favoritos',
+                  title: 'Favoritos',
+                  headerTitle: 'Favoritos',
+                  headerShown: false,
+                }}
+              />
+              <Drawer.Screen
+                name="profile"
+                options={{
+                  drawerLabel: 'Perfil',
+                  title: 'Perfil',
+                  headerTitle: 'Perfil',
+                  headerShown: false,
+                }}
+              />
+            </>
+          )}
         </>
       ) : null}
       {/* <Drawer.Screen

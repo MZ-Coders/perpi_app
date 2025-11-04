@@ -8,22 +8,19 @@
 //   headerShadowVisible: false,
 //   headerLeft: () => null // Remove o botão padrão do drawer
 // };
+import AppHeaderTransparent from '@/components/AppHeaderTransparent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { DeviceEventEmitter, Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import ParallaxScrollView from '../../components/ParallaxScrollView';
-import AppHeaderTransparent from '@/components/AppHeaderTransparent';
+import { emitCartUpdated, listenToCartUpdates } from '../../utils/cartEvents';
 
 const { width } = Dimensions.get('window');
-let SharedElement: any = null;
-if (Platform.OS !== 'web') {
-  SharedElement = require('react-native-shared-element').SharedElement;
-}
+import SharedElement from '../../components/SharedElement';
 
 // Espera receber os dados do produto via params
 export default function ProductDetailScreen() {
@@ -71,16 +68,7 @@ export default function ProductDetailScreen() {
 
   // Escuta eventos de atualização global do carrinho
   React.useEffect(() => {
-    function onCartUpdated() {
-      reloadCart();
-    }
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.addEventListener('cartUpdated', onCartUpdated);
-      return () => window.removeEventListener('cartUpdated', onCartUpdated);
-    } else {
-      const sub = DeviceEventEmitter.addListener('cartUpdated', onCartUpdated);
-      return () => sub.remove();
-    }
+    return listenToCartUpdates(reloadCart);
   }, [reloadCart]);
   const [added, setAdded] = useState(false);
 
@@ -115,11 +103,10 @@ export default function ProductDetailScreen() {
     await AsyncStorage.setItem('cart', JSON.stringify(newCart));
     setCart(newCart);
     console.log('[detalhes] handleAddToCart: cart depois', newCart);
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-      window.dispatchEvent(new Event('cartUpdated'));
-    } else {
-      DeviceEventEmitter.emit('cartUpdated');
-    }
+    
+    // Dispara evento para atualização instantânea em todos os headers
+    emitCartUpdated();
+    
     setAdded(true);
     setTimeout(() => setAdded(false), 1200);
   }
@@ -132,11 +119,9 @@ export default function ProductDetailScreen() {
     await AsyncStorage.setItem('cart', JSON.stringify(newCart));
     setCart(newCart);
     console.log('[detalhes] handleRemoveFromCart: cart depois', newCart);
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-      window.dispatchEvent(new Event('cartUpdated'));
-    } else {
-      DeviceEventEmitter.emit('cartUpdated');
-    }
+    
+    // Dispara evento para atualização instantânea em todos os headers
+    emitCartUpdated();
   }
 
   // Atualiza quantidade do produto no carrinho
@@ -153,11 +138,9 @@ export default function ProductDetailScreen() {
       await AsyncStorage.setItem('cart', JSON.stringify(newCart));
       setCart(newCart);
       console.log('[detalhes] handleUpdateQty: cart depois', newCart);
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-        window.dispatchEvent(new Event('cartUpdated'));
-      } else {
-        DeviceEventEmitter.emit('cartUpdated');
-      }
+      
+      // Dispara evento para atualização instantânea em todos os headers
+      emitCartUpdated();
     } else {
       console.log('[detalhes] handleUpdateQty: item não existe no carrinho');
     }

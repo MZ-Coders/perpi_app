@@ -39,3 +39,4 @@ yarn-error.*
 app-example
 .vscode/mcp.json
 .vscode/design.system.json
+LOCAL_KEY.MD

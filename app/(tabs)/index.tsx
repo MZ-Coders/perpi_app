@@ -1,27 +1,41 @@
 // Favoritos
-type Favorite = { id: number; product_id: number };
 import { Feather as Icon, MaterialCommunityIcons as MCIcon } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useAuthUser } from '../../hooks/useAuthUser';
-import CategoryFilter from '../components/CategoryFilter';
+import { Animated, FlatList, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ProductsSkeleton from '../../components/ProductsSkeleton';
+import { ProductListRefresh, usePullToRefresh } from '../../components/PullToRefresh';
+import SharedElement from '../../components/SharedElement';
+import { useAuthUser } from '../../hooks/useAuthUser';
+import { emitCartUpdated, listenToCartUpdates } from '../../utils/cartEvents';
+import CategoryFilter from '../components/CategoryFilter';
+
+type Favorite = { id: number; product_id: number };
 const FAVORITES_ID = '__favoritos__';
 
-
-let SharedElement: any = null;
-if (Platform.OS !== 'web') {
-  SharedElement = require('react-native-shared-element').SharedElement;
-}
 // import AppHeader from '../../components/AppHeader';
 export default function ProductCatalogScreen() {
   const authUser = useAuthUser();
+  const router = useRouter();
   // Detecta usuário logado apenas pelo hook useAuthUser
   const user = authUser ? authUser : null;
+  
+  // Não mostrar funcionalidades de carrinho para entregadores
+  const showCartFeatures = user?.user_role !== 'driver';
+  
+  // Redirecionar entregadores para a tela de entregador
+  React.useEffect(() => {
+    if (user && user.user_role === 'driver') {
+      // Usar setTimeout para evitar problemas de navegação durante renderização
+      setTimeout(() => {
+        router.replace('/entregador');
+      }, 100);
+    }
+  }, [user, router]);
+  
   // Debug: mostrar o objeto user no console
   React.useEffect(() => {
     // console.log('user:', user);
@@ -69,7 +83,6 @@ export default function ProductCatalogScreen() {
   //     console.log('[DEBUG] useFocusEffect - useAuthUser:', authUser);
   //   }, [])
   // );
-  const router = useRouter();
   const navigation = useNavigation();
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -137,6 +150,9 @@ export default function ProductCatalogScreen() {
       }
       AsyncStorage.setItem('cart', JSON.stringify(newCart)).then(() => {
         console.log('[Cart] Cart persisted to AsyncStorage:', newCart);
+        
+        // Dispara evento para atualização instantânea em todos os headers
+        emitCartUpdated();
       });
       console.log('[Cart] New cart state after toggle:', newCart);
       return newCart;
@@ -162,14 +178,12 @@ export default function ProductCatalogScreen() {
         }
       });
     }
+    
+    // Sincroniza inicialmente
     syncCart();
-    // Só adiciona o event listener no web
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('cartUpdated', syncCart);
-      return () => window.removeEventListener('cartUpdated', syncCart);
-    }
-    // No mobile, não faz nada
-    return undefined;
+    
+    // Escuta eventos de atualização do carrinho usando utilitário
+    return listenToCartUpdates(syncCart);
   }, []);
 
   // Adiciona ou remove favorito
@@ -247,35 +261,42 @@ export default function ProductCatalogScreen() {
 
 
 
-  // Busca produtos e categorias do Supabase
-  React.useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        // Importa o cliente do Supabase
-        const { supabase } = await import('../../lib/supabaseClient');
-        // Busca categorias
-        const { data: catData, error: catError } = await supabase
-          .from('categories')
-          .select('*')
-          .order('name', { ascending: true });
-        if (catError) throw catError;
-        setCategories(catData || []);
+  // Função para buscar produtos e categorias (separada para reutilizar no refresh)
+  const fetchData = async () => {
+    try {
+      // Importa o cliente do Supabase
+      const { supabase } = await import('../../lib/supabaseClient');
+      // Busca categorias
+      const { data: catData, error: catError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true });
+      if (catError) throw catError;
+      setCategories(catData || []);
 
-        // Busca produtos
-        const { data: prodData, error: prodError } = await supabase
-          .from('products')
-          .select('*')
-          .order('name', { ascending: true });
-        if (prodError) throw prodError;
-        setProducts(prodData || []);
-      } catch (err) {
-        console.error('Erro ao buscar dados do Supabase:', err);
-      } finally {
-        setLoading(false);
-      }
+      // Busca produtos
+      const { data: prodData, error: prodError } = await supabase
+        .from('products')
+        .select('*')
+        .order('name', { ascending: true });
+      if (prodError) throw prodError;
+      setProducts(prodData || []);
+    } catch (err) {
+      console.error('Erro ao buscar dados do Supabase:', err);
     }
-    fetchData();
+  };
+
+  // Hook para pull-to-refresh
+  const { refreshing, onRefresh } = usePullToRefresh(fetchData);
+
+  // Busca produtos e categorias do Supabase na montagem inicial
+  React.useEffect(() => {
+    async function fetchInitialData() {
+      setLoading(true);
+      await fetchData();
+      setLoading(false);
+    }
+    fetchInitialData();
   }, []);
 
   // Filtra produtos por categoria, favoritos e busca
@@ -348,12 +369,14 @@ export default function ProductCatalogScreen() {
           <View style={styles.gridCardContent}>
             <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.gridPrice}>MZN {item.price}</Text>
-            <TouchableOpacity
-              style={[styles.gridCartBtn, inCart && styles.cartBtnInCart]}
-              onPress={() => handleToggleCart(item)}
-            >
-              <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
-            </TouchableOpacity>
+            {showCartFeatures && (
+              <TouchableOpacity
+                style={[styles.gridCartBtn, inCart && styles.cartBtnInCart]}
+                onPress={() => handleToggleCart(item)}
+              >
+                <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
       );
@@ -405,16 +428,18 @@ export default function ProductCatalogScreen() {
             <Text style={[styles.gridPrice, { fontSize: 18, marginBottom: 0 }]}>MZN {item.price}</Text>
           </View>
           {/* Carrinho embaixo à direita */}
-          <TouchableOpacity
-            style={[
-              styles.gridCartBtn,
-              inCart && styles.cartBtnInCart,
-              { width: 40, height: 40, borderRadius: 20, position: 'absolute', bottom: 0, right: 0 }
-            ]}
-            onPress={() => handleToggleCart(item)}
-          >
-            <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
-          </TouchableOpacity>
+          {showCartFeatures && (
+            <TouchableOpacity
+              style={[
+                styles.gridCartBtn,
+                inCart && styles.cartBtnInCart,
+                { width: 40, height: 40, borderRadius: 20, position: 'absolute', bottom: 0, right: 0 }
+              ]}
+              onPress={() => handleToggleCart(item)}
+            >
+              <Icon name={inCart ? 'check' : 'shopping-cart'} size={18} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -440,17 +465,19 @@ export default function ProductCatalogScreen() {
             </TouchableOpacity>
             <Text style={styles.title}>Perpi</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity
-                style={styles.cartIconBtn}
-                onPress={() => router.push('/cart')}
-              >
-                <Icon name="shopping-cart" size={24} color="#fff" />
-                {cart.length > 0 && (
-                  <View style={styles.cartBadge}>
-                    <Text style={styles.cartBadgeText}>{cart.length}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              {showCartFeatures && (
+                <TouchableOpacity
+                  style={styles.cartIconBtn}
+                  onPress={() => router.push('/cart')}
+                >
+                  <Icon name="shopping-cart" size={24} color="#fff" />
+                  {cart.length > 0 && (
+                    <View style={styles.cartBadge}>
+                      <Text style={styles.cartBadgeText}>{cart.length}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.cartIconBtn, { marginLeft: 8, padding: 0, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)' }]}
                 onPress={() => {
@@ -514,13 +541,18 @@ export default function ProductCatalogScreen() {
 
       <View style={{ flex: 1 }}>
         {/* Conteúdo scrollável com marginTop para compensar header e busca */}
-        <ScrollView
-          style={[styles.scrollableContent, { marginTop: -210 }]} 
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-          showsVerticalScrollIndicator={true}
-          bounces={true}
-          scrollEventThrottle={16}
-          onScroll={handleScroll}
+        <ProductListRefresh
+          renderType="scroll"
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+          scrollViewProps={{
+            style: [styles.scrollableContent, { marginTop: -210 }],
+            contentContainerStyle: { flexGrow: 1, paddingBottom: 20 },
+            showsVerticalScrollIndicator: true,
+            bounces: true,
+            scrollEventThrottle: 16,
+            onScroll: handleScroll,
+          }}
         >
           {/* Filtro de categorias */}
           <View style={styles.categoryContainer}>
@@ -528,6 +560,7 @@ export default function ProductCatalogScreen() {
               categories={categories}
               selectedCategory={selectedCategory}
               onSelect={setSelectedCategory}
+              loading={loading}
             />
           </View>
 
@@ -563,14 +596,12 @@ export default function ProductCatalogScreen() {
               renderItem={renderProduct}
               contentContainerStyle={{ paddingBottom: 32 }}
               ListEmptyComponent={<Text style={styles.emptyText}>Nenhum produto encontrado.</Text>}
-              refreshing={loading}
-              onRefresh={() => {}}
               nestedScrollEnabled={true}
               scrollEnabled={false}
               scrollToOverflowEnabled={true}
             />
           )}
-        </ScrollView>
+        </ProductListRefresh>
       </View>
     </View>
   );

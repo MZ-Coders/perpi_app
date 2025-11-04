@@ -4,22 +4,27 @@ import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuthUser } from '../hooks/useAuthUser';
+import { listenToCartUpdates } from '../utils/cartEvents';
 
 interface AppHeaderProps {
   title?: string;
   onMenuPress?: () => void;
   showCart?: boolean;
   showUser?: boolean;
+  backMode?: boolean;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart = true, showUser = true }) => {
+const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart = true, showUser = true, backMode = false }) => {
   const router = useRouter();
   const navigation = useNavigation();
   const user = useAuthUser();
   const [cartCount, setCartCount] = React.useState(0);
   const [profile, setProfile] = React.useState<any>(null);
+
+  // Não mostrar carrinho para entregadores
+  const shouldShowCart = showCart && user?.user_role !== 'driver';
 
   // Carrega quantidade do carrinho
   React.useEffect(() => {
@@ -37,12 +42,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart
         }
       });
     }
+    
+    // Sincroniza inicialmente
     syncCart();
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('cartUpdated', syncCart);
-      return () => window.removeEventListener('cartUpdated', syncCart);
-    }
-    return undefined;
+    
+    // Escuta eventos de atualização do carrinho usando utilitário
+    return listenToCartUpdates(syncCart);
   }, []);
 
   // Busca perfil se quiser mostrar avatar
@@ -83,13 +88,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title = '', onMenuPress, showCart
             }
           }}
           style={styles.iconButton}
-          accessibilityLabel="Abrir menu"
+          accessibilityLabel={backMode ? "Voltar" : "Abrir menu"}
         >
-          <Icon name="menu" size={28} color="#fff" />
+          <Icon name={backMode ? "arrow-left" : "menu"} size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>{title}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {showCart && (
+          {shouldShowCart && (
             <TouchableOpacity
               style={styles.cartIconBtn}
               onPress={() => router.push('/cart')}

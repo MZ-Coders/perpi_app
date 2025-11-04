@@ -107,14 +107,14 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         {/* Divider */}
-        <View style={styles.dividerContainer}>
+        {/* <View style={styles.dividerContainer}>
           <View style={[styles.divider, isDark && styles.darkDivider]} />
           <Text style={[styles.dividerText, isDark && styles.darkSecondaryText]}>ou</Text>
           <View style={[styles.divider, isDark && styles.darkDivider]} />
-        </View>
+        </View> */}
 
         {/* OAuth Buttons */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.secondaryButton, isDark ? styles.darkSecondaryButton : styles.lightSecondaryButton]}
           onPress={() => handleOAuthLogin('google')}
           activeOpacity={0.9}
@@ -132,7 +132,7 @@ export default function LoginScreen() {
           <Text style={[styles.secondaryButtonText, isDark && styles.darkText]}>
             Continuar com Facebook
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* Footer */}

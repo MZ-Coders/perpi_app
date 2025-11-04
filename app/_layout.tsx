@@ -13,8 +13,8 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-  const auth = useAuthUser() || {};
-  const user = auth.user || null;
+  const auth = useAuthUser();
+  const user = auth || null;
 
   if (!loaded) {
     // Async font loading only occurs in development.
@@ -28,6 +28,8 @@ export default function RootLayout() {
         <Stack.Screen name="orders" options={{ headerShown: false }} />
         <Stack.Screen name="favorites" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="addresses" options={{ headerShown: false }} />
+        <Stack.Screen name="address-form" options={{ headerShown: false }} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ headerShown: false }} />
       </Stack>

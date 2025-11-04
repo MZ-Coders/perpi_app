@@ -48,3 +48,12 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## O que precisa para entregador?
+1. Ainda nao foi testado.
+2. Preciso de :
+
+- Executar o script SQL no Supabase (supabase-schema.sql)
+- Configurar o bucket de storage para documentos
+- Adicione as permissões de câmera e localização
+- Teste o fluxo completo!

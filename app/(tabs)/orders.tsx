@@ -1,28 +1,27 @@
-import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { 
-  FlatList, 
-  Image, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  View, 
+import { router, useFocusEffect } from 'expo-router';
+import React, { useState } from 'react';
+import {
   Animated,
-  Modal,
+  Dimensions,
+  FlatList,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-  Dimensions 
+  View
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import OrdersSkeleton from '../../components/OrdersSkeleton';
-import { router } from 'expo-router';
 import AppHeader from '../../components/AppHeader';
+import OrdersSkeleton from '../../components/OrdersSkeleton';
+import { OrdersListRefresh, usePullToRefresh } from '../../components/PullToRefresh';
 import { useAuthUser } from '../../hooks/useAuthUser';
 import { supabase } from '../../lib/supabaseClient';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function OrdersScreen() {
-
   const [showSuccess, setShowSuccess] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
@@ -31,63 +30,39 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
+  const [expandedOrders, setExpandedOrders] = useState<{ [orderId: number]: boolean }>({});
+  const [ordersWithTracking, setOrdersWithTracking] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    (async () => {
-      // Checa se deve mostrar modal de sucesso (cross-plataforma)
-      const flag = await AsyncStorage.getItem('showOrderSuccess');
-      if (flag === '1') {
-        setShowSuccess(true);
-        // Animação de entrada do modal
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            tension: 100,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]).start();
-        setTimeout(async () => {
-          // Animação de saída
-          Animated.parallel([
-            Animated.timing(fadeAnim, {
-              toValue: 0,
-              duration: 250,
-              useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-              toValue: 0.8,
-              duration: 250,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            setShowSuccess(false);
-          });
-          await AsyncStorage.removeItem('showOrderSuccess');
-        }, 3000);
-      }
-      if (!USER_ID) return;
-      setLoading(true);
+  // Função para buscar pedidos (separada para reutilizar no refresh)
+  const fetchOrders = async () => {
+    if (!USER_ID) return;
+    
+    setError(null);
+    
+    try {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .eq('customer_id', USER_ID)
         .order('created_at', { ascending: false });
-      if (error) setError(error.message);
-      else setOrders(data || []);
-      setLoading(false);
+        
+      if (error) throw error;
+      
+      setOrders(data || []);
+      
       // Fetch order items for each order
       if (data && data.length > 0) {
         const orderIds = data.map((order: any) => order.id);
+        
+        // Verificar quais pedidos têm rastreamento
+        await checkOrdersTracking(orderIds);
+        
         const { data: itemsData, error: itemsError } = await supabase
           .from('order_items')
           .select('*')
           .in('order_id', orderIds);
+          
         if (!itemsError && itemsData) {
           // Fetch products for all items
           const productIds = [...new Set(itemsData.map((item: any) => item.product_id))];
@@ -95,6 +70,7 @@ export default function OrdersScreen() {
             .from('products')
             .select('id, name, image_url')
             .in('id', productIds);
+            
           // Group items by order_id and attach product info
           const grouped: { [orderId: number]: any[] } = {};
           itemsData.forEach((item: any) => {
@@ -104,9 +80,89 @@ export default function OrdersScreen() {
           });
           setOrderItems(grouped);
         }
+      } else {
+        setOrderItems({});
       }
-    })();
-  }, [USER_ID]);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar pedidos');
+      console.error('Erro ao buscar pedidos:', err);
+    }
+  };
+
+  // Função para verificar quais pedidos têm rastreamento
+  const checkOrdersTracking = async (orderIds: number[]) => {
+    if (orderIds.length === 0) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('rastreamento_pedidos')
+        .select('pedido_id_str')
+        .in('pedido_id_str', orderIds.map(id => String(id)));
+      
+      if (!error && data) {
+        const idsWithTracking = new Set(data.map(item => parseInt(item.pedido_id_str)));
+        setOrdersWithTracking(idsWithTracking);
+        console.log('📍 Pedidos com rastreamento:', Array.from(idsWithTracking));
+      }
+    } catch (err) {
+      console.error('Erro ao verificar rastreamento:', err);
+    }
+  };
+
+  // Hook para pull-to-refresh
+  const { refreshing, onRefresh } = usePullToRefresh(fetchOrders);
+
+
+  // Atualiza pedidos e modal de sucesso ao focar a tela
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      (async () => {
+        // Checa se deve mostrar modal de sucesso (cross-plataforma)
+        const flag = await AsyncStorage.getItem('showOrderSuccess');
+        if (flag === '1' && isActive) {
+          setShowSuccess(true);
+          // Animação de entrada do modal
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+              toValue: 1,
+              tension: 100,
+              friction: 8,
+              useNativeDriver: true,
+            }),
+          ]).start();
+          setTimeout(async () => {
+            // Animação de saída
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 250,
+                useNativeDriver: true,
+              }),
+              Animated.timing(scaleAnim, {
+                toValue: 0.8,
+                duration: 250,
+                useNativeDriver: true,
+              }),
+            ]).start(() => {
+              if (isActive) setShowSuccess(false);
+            });
+            await AsyncStorage.removeItem('showOrderSuccess');
+          }, 3000);
+        }
+        // Sempre atualiza os pedidos ao focar
+        setLoading(true);
+        await fetchOrders();
+        setLoading(false);
+      })();
+      return () => { isActive = false; };
+    }, [USER_ID])
+  );
 
 const getStatusTextColor = (status: string) => {
   switch (status?.toLowerCase()) {
@@ -177,10 +233,6 @@ const getStatusIcon = (status: string) => {
     });
   };
 
-
-  const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
-  const [expandedOrders, setExpandedOrders] = useState<{ [orderId: number]: boolean }>({});
-
   const toggleAccordion = (orderId: number) => {
     setExpandedOrders((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
   };
@@ -201,35 +253,97 @@ const getStatusIcon = (status: string) => {
             <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
           </View>
           <View style={styles.orderHeaderRight}>
-            <View style={[styles.statusBadge, styles.statusBadgeGray]}> 
+            {/* Desabilidando a visaulizacao do status para o utilizador por clicar em ver acompanhamento */}
+            {/* <View style={[styles.statusBadge, styles.statusBadgeGray]}> 
               <View style={styles.statusIconWrapper}>
                 {getStatusIcon(item.order_status)}
               </View>
               <Text style={[styles.statusText, getStatusTextColor(item.order_status)]}>{getStatusText(item.order_status)}</Text>
-            </View>
+            </View> */}
             {/* Botão de rastreamento, exatamente abaixo do status e mesmo tamanho */}
             {showTrackButton && (
-              <TouchableOpacity
-                style={[
-                  styles.statusBadge,
-                  styles.trackButton,
-                  {
-                    marginTop: 8,
-                    alignSelf: 'stretch',
-                    minWidth: 100,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 12,
-                    paddingVertical: styles.statusBadge.paddingVertical // igual ao status
-                  }
-                ]}
-                onPress={() => router.push({ pathname: '/order-tracking', params: { orderId: item.id } })}
-              >
-                <MaterialCommunityIcons name="map-marker-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.trackButtonText}>Rastrear</Text>
-              </TouchableOpacity>
+              <>
+              {/* Desabilitando rastreamento por parte do cliente. Sera trabalhando na versao a posterior */}
+
+              
+                {/* <TouchableOpacity
+                  style={[
+                    styles.statusBadge,
+                    styles.trackButton,
+                    {
+                      marginTop: 8,
+                      alignSelf: 'stretch',
+                      minWidth: 100,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 12,
+                      paddingVertical: styles.statusBadge.paddingVertical // igual ao status
+                    }
+                  ]}
+                  onPress={() => router.push({ pathname: '/order-tracking', params: { orderId: item.id } })}
+                >
+                  <MaterialCommunityIcons name="map-marker-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.trackButtonText}>Rastrear</Text>
+                </TouchableOpacity>
+                 */}
+                
+              </>
             )}
+            <TouchableOpacity
+                  style={[
+                    styles.statusBadge,
+                    styles.followButton,
+                    {
+                      marginTop: 8,
+                      alignSelf: 'stretch',
+                      minWidth: 100,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 12,
+                      paddingVertical: styles.statusBadge.paddingVertical // igual ao status
+                    }
+                  ]}
+                  onPress={() => {
+                    router.push({ pathname: '/order-follow', params: { orderId: item.id } });
+                  }}
+                >
+                  <MaterialCommunityIcons name="eye-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.followButtonText}>Acompanhar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.statusBadge,
+                    ordersWithTracking.has(item.id) ? styles.trackingButton : styles.trackingButtonDisabled,
+                    {
+                      marginTop: 8,
+                      alignSelf: 'stretch',
+                      minWidth: 100,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 12,
+                      paddingVertical: styles.statusBadge.paddingVertical
+                    }
+                  ]}
+                  disabled={!ordersWithTracking.has(item.id)}
+                  onPress={() => {
+                    if (ordersWithTracking.has(item.id)) {
+                      router.push({ pathname: '/order-tracking', params: { orderId: item.id } });
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons 
+                    name="map-marker-outline" 
+                    size={18} 
+                    color={ordersWithTracking.has(item.id) ? "#fff" : "#999"} 
+                    style={{ marginRight: 8 }} 
+                  />
+                  <Text style={ordersWithTracking.has(item.id) ? styles.trackingButtonText : styles.trackingButtonTextDisabled}>
+                    {ordersWithTracking.has(item.id) ? 'Mapa' : 'Sem rastreamento'}
+                  </Text>
+                </TouchableOpacity>
           </View>
         </View>
 
@@ -309,7 +423,7 @@ const getStatusIcon = (status: string) => {
       <AppHeader title="Meus Pedidos" />
       
       {/* Modal de Sucesso Animado */}
-      <Modal
+      {/* <Modal
         transparent={true}
         visible={showSuccess}
         animationType="none"
@@ -343,7 +457,7 @@ const getStatusIcon = (status: string) => {
             </View>
           </Animated.View>
         </Animated.View>
-      </Modal>
+      </Modal> */}
 
       {loading ? (
         <OrdersSkeleton />
@@ -352,7 +466,14 @@ const getStatusIcon = (status: string) => {
           <Text style={styles.errorIcon}>⚠️</Text>
           <Text style={styles.errorTitle}>Oops! Algo deu errado</Text>
           <Text style={styles.errorMessage}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton}>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={async () => {
+              setLoading(true);
+              await fetchOrders();
+              setLoading(false);
+            }}
+          >
             <Text style={styles.retryButtonText}>Tentar Novamente</Text>
           </TouchableOpacity>
         </View>
@@ -371,14 +492,20 @@ const getStatusIcon = (status: string) => {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={orders}
-          keyExtractor={item => item.id.toString()}
-          renderItem={renderOrderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
+        <OrdersListRefresh
+          renderType="flatlist"
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+        >
+          <FlatList
+            data={orders}
+            keyExtractor={item => item.id.toString()}
+            renderItem={renderOrderItem}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
+        </OrdersListRefresh>
       )}
     </View>
   );
@@ -729,6 +856,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
+  
+  // Botão de acompanhamento
+  followButton: {
+    marginTop: 16,
+    backgroundColor: '#2196F3',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  followButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   // Estados redesenhados
   loadingContainer: {
     flex: 1,
@@ -847,5 +996,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  // Botão de acompanhamento (mapa)
+  trackingButton: {
+    marginTop: 16,
+    backgroundColor: '#FF9500',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF9500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  trackingButtonDisabled: {
+    marginTop: 16,
+    backgroundColor: '#E0E0E0',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.6,
+  },
+  trackingButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  trackingButtonTextDisabled: {
+    color: '#999',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });
