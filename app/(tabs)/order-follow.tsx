@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppHeader from '../../components/AppHeader';
@@ -29,6 +29,7 @@ export default function OrderFollowScreen() {
   const [order, setOrder] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasTracking, setHasTracking] = useState(false);
 
   // Status do pedido baseado no enum order_status da tabela orders
   const [orderStatuses, setOrderStatuses] = useState<OrderStatus[]>([
@@ -109,6 +110,16 @@ export default function OrderFollowScreen() {
 
       if (orderError) throw orderError;
       setOrder(orderData);
+
+      // Verificar se existe rastreamento para este pedido
+      const { data: trackingData } = await supabase
+        .from('rastreamento_pedidos')
+        .select('id')
+        .eq('pedido_id_str', String(orderId))
+        .limit(1);
+      
+      setHasTracking(!!(trackingData && trackingData.length > 0));
+      console.log(`📍 Pedido ${orderId} ${trackingData && trackingData.length > 0 ? 'TEM' : 'NÃO TEM'} rastreamento`);
 
       // Buscar itens do pedido
       const { data: itemsData, error: itemsError } = await supabase
@@ -298,14 +309,28 @@ export default function OrderFollowScreen() {
                   color="#008A44" 
                 />
               </TouchableOpacity>
-              {/* Desabilidando Tracking por parte do cliente. Sera trabalhando na versao a posterior */}
-              {/* <TouchableOpacity 
-                style={styles.trackButton}
-                onPress={() => router.push({ pathname: '/order-tracking', params: { orderId } })}
+              
+              <TouchableOpacity 
+                style={[
+                  styles.trackButton,
+                  !hasTracking && styles.trackButtonDisabled
+                ]}
+                disabled={!hasTracking}
+                onPress={() => {
+                  if (hasTracking) {
+                    router.push({ pathname: '/order-tracking', params: { orderId } });
+                  }
+                }}
               >
-                <MaterialCommunityIcons name="map-marker" size={20} color="#fff" />
-                <Text style={styles.trackButtonText}>Rastrear</Text>
-              </TouchableOpacity> */}
+                <MaterialCommunityIcons 
+                  name="map-marker" 
+                  size={20} 
+                  color={hasTracking ? "#fff" : "#999"} 
+                />
+                <Text style={hasTracking ? styles.trackButtonText : styles.trackButtonTextDisabled}>
+                  {hasTracking ? 'Rastrear' : 'Sem rastreamento'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -455,8 +480,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  trackButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    opacity: 0.6,
+  },
   trackButtonText: {
     color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  trackButtonTextDisabled: {
+    color: '#999',
     fontWeight: '600',
     fontSize: 14,
   },

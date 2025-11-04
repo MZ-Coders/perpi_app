@@ -316,13 +316,6 @@ export default function NavegacaoEntregaScreen() {
 
         <View style={styles.actionButtons}>
           <Pressable
-            style={styles.navigationButton}
-            onPress={openExternalNavigation}
-          >
-            <Text style={styles.navigationButtonText}>🧭 Abrir Navegação</Text>
-          </Pressable>
-
-          <Pressable
             style={[styles.trackingButton, tracking ? styles.trackingButtonActive : styles.trackingButtonInactive]}
             onPress={toggleTracking}
           >

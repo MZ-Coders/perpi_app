@@ -32,6 +32,7 @@ export default function OrdersScreen() {
   const [error, setError] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<{ [orderId: number]: any[] }>({});
   const [expandedOrders, setExpandedOrders] = useState<{ [orderId: number]: boolean }>({});
+  const [ordersWithTracking, setOrdersWithTracking] = useState<Set<number>>(new Set());
 
   // Função para buscar pedidos (separada para reutilizar no refresh)
   const fetchOrders = async () => {
@@ -53,6 +54,10 @@ export default function OrdersScreen() {
       // Fetch order items for each order
       if (data && data.length > 0) {
         const orderIds = data.map((order: any) => order.id);
+        
+        // Verificar quais pedidos têm rastreamento
+        await checkOrdersTracking(orderIds);
+        
         const { data: itemsData, error: itemsError } = await supabase
           .from('order_items')
           .select('*')
@@ -81,6 +86,26 @@ export default function OrdersScreen() {
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar pedidos');
       console.error('Erro ao buscar pedidos:', err);
+    }
+  };
+
+  // Função para verificar quais pedidos têm rastreamento
+  const checkOrdersTracking = async (orderIds: number[]) => {
+    if (orderIds.length === 0) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('rastreamento_pedidos')
+        .select('pedido_id_str')
+        .in('pedido_id_str', orderIds.map(id => String(id)));
+      
+      if (!error && data) {
+        const idsWithTracking = new Set(data.map(item => parseInt(item.pedido_id_str)));
+        setOrdersWithTracking(idsWithTracking);
+        console.log('📍 Pedidos com rastreamento:', Array.from(idsWithTracking));
+      }
+    } catch (err) {
+      console.error('Erro ao verificar rastreamento:', err);
     }
   };
 
@@ -290,7 +315,7 @@ const getStatusIcon = (status: string) => {
                 <TouchableOpacity
                   style={[
                     styles.statusBadge,
-                    styles.trackingButton,
+                    ordersWithTracking.has(item.id) ? styles.trackingButton : styles.trackingButtonDisabled,
                     {
                       marginTop: 8,
                       alignSelf: 'stretch',
@@ -302,12 +327,22 @@ const getStatusIcon = (status: string) => {
                       paddingVertical: styles.statusBadge.paddingVertical
                     }
                   ]}
+                  disabled={!ordersWithTracking.has(item.id)}
                   onPress={() => {
-                    router.push({ pathname: '/order-tracking', params: { orderId: item.id } });
+                    if (ordersWithTracking.has(item.id)) {
+                      router.push({ pathname: '/order-tracking', params: { orderId: item.id } });
+                    }
                   }}
                 >
-                  <MaterialCommunityIcons name="map-marker-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={styles.trackingButtonText}>Mapa</Text>
+                  <MaterialCommunityIcons 
+                    name="map-marker-outline" 
+                    size={18} 
+                    color={ordersWithTracking.has(item.id) ? "#fff" : "#999"} 
+                    style={{ marginRight: 8 }} 
+                  />
+                  <Text style={ordersWithTracking.has(item.id) ? styles.trackingButtonText : styles.trackingButtonTextDisabled}>
+                    {ordersWithTracking.has(item.id) ? 'Mapa' : 'Sem rastreamento'}
+                  </Text>
                 </TouchableOpacity>
           </View>
         </View>
@@ -976,8 +1011,24 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  trackingButtonDisabled: {
+    marginTop: 16,
+    backgroundColor: '#E0E0E0',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.6,
+  },
   trackingButtonText: {
     color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  trackingButtonTextDisabled: {
+    color: '#999',
     fontWeight: '700',
     fontSize: 16,
     letterSpacing: 0.5,

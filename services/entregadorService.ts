@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
 import type {
-  AvaliacaoEntregador,
-  Entregador,
-  FormularioCadastroEntregador
+    AvaliacaoEntregador,
+    Entregador,
+    FormularioCadastroEntregador
 } from '../types/entregador';
 
 export class EntregadorService {
@@ -307,7 +307,9 @@ export class EntregadorService {
   static async registrarLocalizacao(
     pedidoId: string,
     latitude: number,
-    longitude: number
+    longitude: number,
+    heading?: number,
+    speed?: number
   ): Promise<{ error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -321,19 +323,76 @@ export class EntregadorService {
 
       if (!entregador) throw new Error('Entregador não encontrado');
 
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pedidoId);
+      const insertData: Record<string, any> = {
+        entregador_id: entregador.id,
+        latitude,
+        longitude,
+        status: 'localizacao_atualizada'
+      };
+
+      // Adicionar heading e speed se disponíveis
+      if (heading !== undefined && heading !== null) {
+        insertData.heading = heading;
+      }
+      if (speed !== undefined && speed !== null) {
+        insertData.speed = speed;
+      }
+
+      if (isUuid) {
+        insertData.pedido_id = pedidoId;
+      } else {
+        insertData.pedido_id_str = pedidoId.toString();
+      }
+
       const { error } = await supabase
         .from('rastreamento_pedidos')
-        .insert({
-          pedido_id: pedidoId,
-          entregador_id: entregador.id,
-          latitude,
-          longitude,
-          status: 'localizacao_atualizada'
-        });
+        .insert(insertData);
 
       return { error };
     } catch (error) {
       return { error };
+    }
+  }
+
+  // Buscar localização atual do entregador para um pedido
+  static async buscarLocalizacaoEntregador(
+    pedidoId: string
+  ): Promise<{ data: { latitude: number; longitude: number; heading?: number; speed?: number; created_at: string } | null; error: any }> {
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pedidoId);
+      const campoQuery = isUuid ? 'pedido_id' : 'pedido_id_str';
+      
+      console.log(`🔍 [SERVICE] Buscando localização com:`, {
+        pedidoId,
+        isUuid,
+        campoQuery,
+        valorBusca: pedidoId.toString()
+      });
+
+      const query = supabase
+        .from('rastreamento_pedidos')
+        .select('latitude, longitude, heading, speed, created_at, pedido_id, pedido_id_str, entregador_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .eq(campoQuery, pedidoId.toString());
+
+      const { data, error } = await query.single();
+
+      if (error) {
+        if (error.code === 'PGRST116') { // PGRST116 = no rows returned
+          console.log('⚠️ [SERVICE] Nenhum registro encontrado (PGRST116)');
+          return { data: null, error: null };
+        }
+        console.error('❌ [SERVICE] Erro na query:', error);
+        return { data: null, error };
+      }
+
+      console.log('✅ [SERVICE] Dados retornados:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ [SERVICE] Exceção ao buscar localização:', error);
+      return { data: null, error };
     }
   }
 
